@@ -379,13 +379,14 @@
     "enabled": true,
     "maxPostsPerRun": 3,
     "minDropPercent": 10,
-    "quietHours": [
+    "channel": "lowprice_saja",
+    "channelName": "로우프라이스사자",
+    "morningDigest": true,
+    "silentHours": [
       0,
       7
     ],
-    "channel": "lowprice_saja",
-    "channelName": "로우프라이스사자",
-    "morningDigest": true
+    "digestHour": 7
   },
   "sections": [
     {

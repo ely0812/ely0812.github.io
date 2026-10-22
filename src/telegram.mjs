@@ -34,17 +34,16 @@ if (state.mode !== 'live') {
 
 const escAttr = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const kstHour = new Date(Date.now() + 9 * 36e5).getUTCHours();
-const [quietFrom, quietTo] = config.telegram.quietHours ?? [0, 7];
-if (kstHour >= quietFrom && kstHour < quietTo) {
-  console.log(`⏭ 조용한 시간(${quietFrom}~${quietTo}시 KST)이라 게시하지 않음`);
-  process.exit(0);
-}
+// Late-night posts still go out (night owls catch deals) but arrive without sound.
+const [silentFrom, silentTo] = config.telegram.silentHours ?? [0, 7];
+const silent = kstHour >= silentFrom && kstHour < silentTo;
+if (silent) console.log(`🔕 ${silentFrom}~${silentTo}시(KST)라 무음으로 게시`);
 
 const products = await read('data/products.json');
 const today0 = new Date(Date.now() + 9 * 36e5).toISOString().slice(0, 10);
 
-// Morning digest: once a day, the first run after quiet hours posts today's top goldbox deals.
-if (config.telegram.morningDigest && state.digestDate !== today0 && kstHour < 12) {
+// Morning digest: once a day, the first run from digestHour (KST) to noon posts today's top goldbox deals.
+if (config.telegram.morningDigest && state.digestDate !== today0 && kstHour >= (config.telegram.digestHour ?? 7) && kstHour < 12) {
   const top = (state.lists.goldbox ?? []).map((id) => products[id]).filter(Boolean)
     .sort((a, b) => (b.discountRate ?? 0) - (a.discountRate ?? 0)).slice(0, 5);
   if (top.length) {
@@ -71,7 +70,7 @@ const site = config.baseUrl.replace(/\/$/, '');
 const send = (method, body) => fetch(`https://api.telegram.org/bot${token}/${method}`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ chat_id: chatId, parse_mode: 'HTML', ...body }),
+  body: JSON.stringify({ chat_id: chatId, parse_mode: 'HTML', disable_notification: silent, ...body }),
 });
 for (const { product: p, before, percent, recordLow } of drops) {
   // Disclosure goes first: SNS ad guidelines expect it at the top of the post.
