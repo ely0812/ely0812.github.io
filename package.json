@@ -1,0 +1,17 @@
+{
+  "name": "coupang-autopilot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "쿠팡 파트너스 상품을 매일 자동 수집해 가격추적 정적 사이트로 발행",
+  "engines": { "node": ">=20.11" },
+  "scripts": {
+    "collect": "node src/collect.mjs",
+    "build": "node src/build.mjs",
+    "notify": "node src/telegram.mjs",
+    "daily": "npm run collect && npm run build && npm run notify",
+    "preview": "npx --yes serve dist -l 4173",
+    "test": "node --test test/*.test.mjs",
+    "check": "node src/check.mjs"
+  }
+}
