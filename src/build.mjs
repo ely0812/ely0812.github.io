@@ -19,6 +19,12 @@ const list = (key) => (state.lists[key] ?? []).map((id) => products[id]).filter(
 // Only publish pages that have products, so search engines never index empty pages.
 const categories = config.categories.filter((c) => list(`best:${c.slug}`).length);
 const guides = config.guides.filter((g) => list(`guide:${g.slug}`).length);
+const sections = (config.sections ?? [])
+  .map((sec) => ({ ...sec, categories: categories.filter((c) => c.section === sec.slug), guides: guides.filter((g) => g.section === sec.slug) }))
+  .filter((sec) => sec.categories.length || sec.guides.length);
+const root = new URL(base).pathname.replace(/\/$/, '');
+const href = (p) => `${root}${p}`;
+const sectionName = Object.fromEntries(sections.map((sec) => [sec.slug, sec.name]));
 
 function sparkline(history) {
   if (history.length < 2) return '';
@@ -54,7 +60,7 @@ function page({ path: urlPath, title, description, body, items = [] }) {
     '@context': 'https://schema.org', '@type': 'ItemList', name: title,
     itemListElement: items.map((p, i) => ({ '@type': 'ListItem', position: i + 1, name: p.name, url: p.url })),
   };
-  const nav = [['', '홈'], ['deals/', '가격 하락'], ['goldbox/', '골드박스'], ...categories.map((c) => [`best/${c.slug}/`, c.name])]
+  const nav = [['', '홈'], ['deals/', '가격 하락'], ['goldbox/', '골드박스'], ...sections.map((sec) => [`topic/${sec.slug}/`, sec.name])]
     .map(([href, label]) => `<a href="${rel}${href}">${esc(label)}</a>`).join('');
   return `<!doctype html>
 <html lang="${config.lang}">
@@ -93,6 +99,16 @@ const verificationMeta = [
   v.naver && `<meta name="naver-site-verification" content="${esc(v.naver)}">`,
 ].filter(Boolean).join('\n');
 
+// Round-robin the top items of a section's lists so the home preview mixes categories and guides.
+function preview(sec, n = 4) {
+  const lists = [...sec.categories.map((c) => list(`best:${c.slug}`)), ...sec.guides.map((g) => list(`guide:${g.slug}`))];
+  const out = new Map();
+  for (let i = 0; out.size < n && lists.some((l) => l[i]); i++) for (const l of lists) if (l[i] && out.size < n) out.set(l[i].id, l[i]);
+  return [...out.values()];
+}
+const guideLinks = (gs) => (gs.length ? `<ul class="links">${gs.map((g) => `<li><a href="${href(`/guide/${g.slug}/`)}">${esc(g.title)}</a></li>`).join('')}</ul>` : '');
+const crumb = (secSlug) => (sectionName[secSlug] ? `<p class="crumb"><a href="${href('/')}">홈</a> › <a href="${href(`/topic/${secSlug}/`)}">${esc(sectionName[secSlug])}</a></p>` : '');
+
 const pages = [];
 const add = (p) => pages.push(p);
 
@@ -105,11 +121,24 @@ const dropTag = (p) => {
 add({
   path: '/', title: config.siteName, description: config.siteDescription, items: list('goldbox').slice(0, 8),
   body: `<p class="lead">${esc(config.siteDescription)}</p>
-<h2>오늘 가격이 내려간 상품</h2>${grid(drops.slice(0, 8).map((d) => d.product), dropTag)}
+${drops.length ? `<h2>오늘 가격이 내려간 상품</h2>${grid(drops.slice(0, 8).map((d) => d.product), dropTag)}` : ''}
 <h2>골드박스 특가</h2>${grid(list('goldbox').slice(0, 8))}
-<h2>추천 가이드</h2><ul class="links">${guides.map((g) => `<li><a href="guide/${g.slug}/">${esc(g.title)}</a></li>`).join('')}</ul>
-<h2>카테고리 베스트</h2><ul class="links">${categories.map((c) => `<li><a href="best/${c.slug}/">${esc(c.name)} 베스트</a></li>`).join('')}</ul>`,
+${sections.map((sec) => `<h2><a href="${href(`/topic/${sec.slug}/`)}">${esc(sec.name)}</a></h2>
+${grid(preview(sec))}
+${guideLinks(sec.guides)}`).join('\n')}`,
 });
+
+for (const sec of sections) {
+  const ids = new Set([...sec.categories.map((c) => `best:${c.slug}`), ...sec.guides.map((g) => `guide:${g.slug}`)].flatMap((k) => state.lists[k] ?? []));
+  const secDrops = drops.filter((d) => ids.has(d.product.id)).map((d) => d.product);
+  add({
+    path: `/topic/${sec.slug}/`, title: `${sec.name} 최저가 모음`, description: sec.description, items: secDrops,
+    body: `<p class="lead">${esc(sec.description)}</p>
+${secDrops.length ? `<h2>가격이 내려간 ${esc(sec.name)} 상품</h2>${grid(secDrops.slice(0, 8), dropTag)}` : ''}
+<h2>품목별 최저가 가이드</h2>${guideLinks(sec.guides)}
+${sec.categories.map((c) => `<h2><a href="${href(`/best/${c.slug}/`)}">${esc(c.name)} 베스트</a></h2>${grid(list(`best:${c.slug}`).slice(0, 8))}`).join('\n')}`,
+  });
+}
 
 add({
   path: '/deals/', title: '최근 가격이 내려간 쿠팡 상품', description: '매일 기록한 가격 이력을 바탕으로 직전 가격 대비 가격이 내려간 상품을 모았습니다.',
@@ -123,7 +152,7 @@ add({
 
 for (const c of categories) {
   const items = list(`best:${c.slug}`);
-  add({ path: `/best/${c.slug}/`, title: `${c.name} 베스트 상품 순위`, description: `쿠팡 ${c.name} 카테고리에서 지금 많이 팔리는 상품 ${items.length}개와 가격 추이.`, items, body: grid(items) });
+  add({ path: `/best/${c.slug}/`, title: `${c.name} 베스트 상품 순위`, description: `쿠팡 ${c.name} 카테고리에서 지금 많이 팔리는 상품 ${items.length}개와 가격 추이.`, items, body: crumb(c.section) + grid(items) });
 }
 
 for (const g of guides) {
@@ -131,9 +160,10 @@ for (const g of guides) {
   const rows = items.map((p, i) => `<tr><td>${i + 1}</td><td>${esc(p.name)}</td><td>${won(p.price)}</td><td>${p.rocket ? '로켓' : '-'}</td></tr>`).join('');
   add({
     path: `/guide/${g.slug}/`, title: g.title, description: g.intro, items,
-    body: `<p class="lead">${esc(g.intro)}</p>
+    body: `${crumb(g.section)}<p class="lead">${esc(g.intro)}</p>
 ${items.length ? `<h2>한눈에 비교</h2><div class="tablewrap"><table><thead><tr><th>#</th><th>상품</th><th>가격</th><th>배송</th></tr></thead><tbody>${rows}</tbody></table></div>` : ''}
-<h2>상품 목록</h2>${grid(items)}`,
+<h2>상품 목록</h2>${grid(items)}
+${guides.some((o) => o.section === g.section && o !== g) ? `<h2>같은 분야 다른 가이드</h2>${guideLinks(guides.filter((o) => o.section === g.section && o !== g))}` : ''}`,
   });
 }
 
