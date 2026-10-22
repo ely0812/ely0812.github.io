@@ -16,6 +16,9 @@ const updatedKo = updated.toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', date
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const won = (n) => `${Number(n).toLocaleString('ko-KR')}원`;
 const list = (key) => (state.lists[key] ?? []).map((id) => products[id]).filter(Boolean);
+// Only publish pages that have products, so search engines never index empty pages.
+const categories = config.categories.filter((c) => list(`best:${c.slug}`).length);
+const guides = config.guides.filter((g) => list(`guide:${g.slug}`).length);
 
 function sparkline(history) {
   if (history.length < 2) return '';
@@ -51,7 +54,7 @@ function page({ path: urlPath, title, description, body, items = [] }) {
     '@context': 'https://schema.org', '@type': 'ItemList', name: title,
     itemListElement: items.map((p, i) => ({ '@type': 'ListItem', position: i + 1, name: p.name, url: p.url })),
   };
-  const nav = [['', '홈'], ['deals/', '가격 하락'], ['goldbox/', '골드박스'], ...config.categories.map((c) => [`best/${c.slug}/`, c.name])]
+  const nav = [['', '홈'], ['deals/', '가격 하락'], ['goldbox/', '골드박스'], ...categories.map((c) => [`best/${c.slug}/`, c.name])]
     .map(([href, label]) => `<a href="${rel}${href}">${esc(label)}</a>`).join('');
   return `<!doctype html>
 <html lang="${config.lang}">
@@ -104,8 +107,8 @@ add({
   body: `<p class="lead">${esc(config.siteDescription)}</p>
 <h2>오늘 가격이 내려간 상품</h2>${grid(drops.slice(0, 8).map((d) => d.product), dropTag)}
 <h2>골드박스 특가</h2>${grid(list('goldbox').slice(0, 8))}
-<h2>추천 가이드</h2><ul class="links">${config.guides.map((g) => `<li><a href="guide/${g.slug}/">${esc(g.title)}</a></li>`).join('')}</ul>
-<h2>카테고리 베스트</h2><ul class="links">${config.categories.map((c) => `<li><a href="best/${c.slug}/">${esc(c.name)} 베스트</a></li>`).join('')}</ul>`,
+<h2>추천 가이드</h2><ul class="links">${guides.map((g) => `<li><a href="guide/${g.slug}/">${esc(g.title)}</a></li>`).join('')}</ul>
+<h2>카테고리 베스트</h2><ul class="links">${categories.map((c) => `<li><a href="best/${c.slug}/">${esc(c.name)} 베스트</a></li>`).join('')}</ul>`,
 });
 
 add({
@@ -118,12 +121,12 @@ add({
   items: list('goldbox'), body: grid(list('goldbox')),
 });
 
-for (const c of config.categories) {
+for (const c of categories) {
   const items = list(`best:${c.slug}`);
   add({ path: `/best/${c.slug}/`, title: `${c.name} 베스트 상품 순위`, description: `쿠팡 ${c.name} 카테고리에서 지금 많이 팔리는 상품 ${items.length}개와 가격 추이.`, items, body: grid(items) });
 }
 
-for (const g of config.guides) {
+for (const g of guides) {
   const items = list(`guide:${g.slug}`);
   const rows = items.map((p, i) => `<tr><td>${i + 1}</td><td>${esc(p.name)}</td><td>${won(p.price)}</td><td>${p.rocket ? '로켓' : '-'}</td></tr>`).join('');
   add({

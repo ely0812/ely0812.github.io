@@ -52,6 +52,9 @@ async function safe(label, fn) {
 }
 
 const lists = state.lists;
+// Forget lists for categories/guides removed from the config.
+const valid = new Set(['goldbox', ...config.categories.map((c) => `best:${c.slug}`), ...config.guides.map((g) => `guide:${g.slug}`)]);
+for (const key of Object.keys(lists)) if (!valid.has(key)) delete lists[key];
 
 const gold = await safe('goldbox', () => api.goldbox());
 if (gold) lists.goldbox = upsert(gold).slice(0, n * 2);
