@@ -10,7 +10,7 @@
 | 저장소 | https://github.com/ely0812/ely0812.github.io (public, 예전 이름 `coupang`) |
 | 텔레그램 채널 | 로우프라이스사자 · https://t.me/lowprice_saja |
 | 호스팅 | GitHub Pages (Source = GitHub Actions) |
-| 자동 실행 | `.github/workflows/daily.yml`: 매시 13분 + 설정·코드 push 때 |
+| 자동 실행 | `daily.yml`: 매시 13분 cron + 설정·코드 push 때 · `heartbeat.yml`: 55분 대기 타이머로 `daily`를 매시간 재실행하는 보조 장치 |
 | 검색 등록 | Google Search Console(`https://ely0812.github.io/`) 확인·사이트맵 제출 완료 · 네이버 서치어드바이저 확인·사이트맵·RSS 제출 완료 |
 | 수익 확인 | 쿠팡 파트너스 → 리포트 |
 
@@ -53,6 +53,7 @@ templates/style.css     스타일 (다크모드 포함)
 test/core.test.mjs      node:test 4개
 .github/workflows/daily.yml   매시 실행: collect → build → notify → data 커밋(pull --rebase) → Pages 배포
 .github/workflows/check.yml   수동 실행: API 점검 + 텔레그램 테스트 메시지
+.github/workflows/heartbeat.yml  'heartbeat' 환경의 대기 타이머(55분) 뒤 daily와 자기 자신을 재실행(체인). 타이머가 없으면 45분 미만 대기를 감지하고 멈춤
 ```
 
 ### data/state.json 주요 필드
@@ -103,6 +104,11 @@ test/core.test.mjs      node:test 4개
   - 한 번 실행에 최대 3개, 상품마다 하루 1회입니다.
   - 0~7시(KST)에는 게시하지 않습니다.
   - 아침 요약은 정오 전에 하루 1회 보냅니다.
+
+## 6-1. 예약 실행 문제와 보조 장치 (2026-10-22)
+- 새 저장소에서 GitHub cron(`daily.yml`, 매시 13분)이 3시간 연속 실행되지 않았습니다. 워크플로 상태는 active, 실행 주체는 ely0812로 정상이었습니다.
+- 보조 장치 `heartbeat.yml`을 만들었습니다. 동작하려면 **Settings → Environments → `heartbeat` → Wait timer 55분** 설정이 필요합니다(이 세션의 프록시는 환경 API를 막고 있어 사용자가 직접 설정). 설정한 뒤 Actions에서 heartbeat를 한 번 수동 실행하면 체인이 시작됩니다.
+- 체인이 끊겨도 `heartbeat.yml`의 6시간 cron이 다시 살립니다(GitHub cron이 동작할 경우).
 
 ## 7. 남은 할 일 (우선순위 순)
 

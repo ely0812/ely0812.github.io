@@ -1,0 +1,37 @@
+name: heartbeat
+
+# GitHub's own schedule can be delayed or skipped, so this chain re-triggers
+# `daily` about once an hour. The delay comes from the `heartbeat` environment's
+# wait timer (55 min, set in Settings → Environments), so no runner sits idle.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '43 */6 * * *' # revives the chain if it ever stops
+
+permissions:
+  actions: write
+
+concurrency:
+  group: heartbeat
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    environment: heartbeat
+    steps:
+      - name: Trigger daily, then queue the next heartbeat
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          created=$(gh api "repos/$REPO/actions/runs/${{ github.run_id }}" --jq .created_at)
+          waited=$(( ( $(date +%s) - $(date -d "$created" +%s) ) / 60 ))
+          echo "대기 시간: ${waited}분"
+          # Without the wait timer this would loop instantly, so stop the chain instead.
+          if [ "$waited" -lt 45 ]; then
+            echo "::error::heartbeat 환경에 대기 타이머(55분)가 설정되지 않아 반복을 멈춥니다"
+            exit 1
+          fi
+          gh workflow run daily.yml --repo "$REPO" --ref main
+          gh workflow run heartbeat.yml --repo "$REPO" --ref main
