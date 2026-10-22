@@ -2,7 +2,7 @@
 // merges them into data/products.json with a per-day price history.
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { createClient, normalize } from './coupang.mjs';
+import { createClient, normalize, optionId } from './coupang.mjs';
 import { mockClient } from './mock.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -30,6 +30,22 @@ if (live && state.mode === 'mock') {
   console.log('↺ MOCK → LIVE 전환: 샘플 데이터를 비웁니다');
   products = {};
   state.lists = {};
+}
+// One-time migration: re-key products by option (vendorItemId). Old histories mixed
+// different options of the same product, so keep only each item's latest price.
+if (state.idScheme !== 'option') {
+  const remap = {};
+  const migrated = {};
+  for (const [oldId, p] of Object.entries(products)) {
+    const id = optionId({ productId: oldId, productUrl: p.url });
+    remap[oldId] = id;
+    migrated[id] = { ...p, id, productId: oldId, history: p.history.slice(-1) };
+  }
+  products = migrated;
+  for (const key of Object.keys(state.lists)) state.lists[key] = [...new Set(state.lists[key].map((id) => remap[id] ?? id))];
+  state.telegramPosted = [];
+  state.idScheme = 'option';
+  console.log(`↺ 옵션 단위 추적으로 전환: 상품 ${Object.keys(products).length}개 (가격 이력 초기화)`);
 }
 // Drop products not seen for 90 days to keep the repo small.
 const cutoff = new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10);

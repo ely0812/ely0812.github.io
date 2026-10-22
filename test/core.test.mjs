@@ -12,9 +12,12 @@ test('authorization header signs signedDate+method+path+query in UTC yyMMddTHHmm
   assert.equal(header, `CEA algorithm=HmacSHA256, access-key=AK, signed-date=260102T030405Z, signature=${expected}`);
 });
 
-test('normalize maps API fields', () => {
+test('normalize maps API fields and keys by option (vendorItemId)', () => {
   const p = normalize({ productId: 1, productName: 'x', productPrice: '1000', productImage: 'i', productUrl: 'u', isRocket: true });
   assert.deepEqual([p.id, p.price, p.rocket, p.freeShipping], ['1', 1000, true, false]);
+  const a = normalize({ productId: 9, productPrice: 7500, productUrl: 'https://link.coupang.com/re/AFFSDP?itemId=1&vendorItemId=111' });
+  const b = normalize({ productId: 9, productPrice: 16100, productUrl: 'https://link.coupang.com/re/AFFSDP?itemId=2&vendorItemId=222' });
+  assert.deepEqual([a.id, b.id, a.productId], ['111', '222', '9']);
 });
 
 test('priceDrops finds drops vs previous record, only for items seen on latest day', () => {

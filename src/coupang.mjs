@@ -63,9 +63,20 @@ export function createClient({ accessKey, secretKey, subId } = {}) {
 }
 
 // Normalize the slightly different shapes returned by goldbox / best / search.
+// The same productId can come back as different options (pack size, quantity) between
+// calls, so prices are tracked per option (vendorItemId) to avoid fake "price drops".
+export function optionId(p) {
+  try {
+    return new URL(p.productUrl).searchParams.get('vendorItemId') || String(p.productId);
+  } catch {
+    return String(p.productId);
+  }
+}
+
 export function normalize(p) {
   return {
-    id: String(p.productId),
+    id: optionId(p),
+    productId: String(p.productId),
     name: p.productName,
     price: Number(p.productPrice) || 0,
     image: p.productImage,
