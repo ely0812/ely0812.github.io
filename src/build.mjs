@@ -84,9 +84,11 @@ ${ld ? `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\
 <p class="disclosure">${esc(config.disclosure)}</p>
 <header><a class="logo" href="${rel}">${esc(config.siteName)}</a><nav>${nav}</nav></header>
 <main>
+${tgCta('top')}
 <h1>${esc(title)}</h1>
 <p class="updated">${state.mode === 'mock' ? '⚠ 샘플 데이터(MOCK) · ' : ''}업데이트: ${updatedKo} · 가격은 변동될 수 있으며 구매 시점의 쿠팡 페이지 가격이 우선합니다.</p>
 ${body}
+${tgCta('bottom')}
 </main>
 <footer><p>${esc(config.disclosure)}</p><p>© ${updated.getFullYear()} ${esc(config.siteName)}</p></footer>
 </body>
@@ -108,6 +110,9 @@ function preview(sec, n = 4) {
 }
 const guideLinks = (gs) => (gs.length ? `<ul class="links">${gs.map((g) => `<li><a href="${href(`/guide/${g.slug}/`)}">${esc(g.title)}</a></li>`).join('')}</ul>` : '');
 const crumb = (secSlug) => (sectionName[secSlug] ? `<p class="crumb"><a href="${href('/')}">홈</a> › <a href="${href(`/topic/${secSlug}/`)}">${esc(sectionName[secSlug])}</a></p>` : '');
+
+const tg = config.telegram?.channel;
+const tgCta = (variant) => (tg ? `<a class="tg tg-${variant}" href="https://t.me/${esc(tg)}" target="_blank" rel="noopener">📣 <b>${esc(config.telegram.channelName || '텔레그램')}</b> 채널에서 가격 하락 알림 받기 →</a>` : '');
 
 const pages = [];
 const add = (p) => pages.push(p);

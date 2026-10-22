@@ -380,7 +380,9 @@
     "quietHours": [
       0,
       7
-    ]
+    ],
+    "channel": "lowprice_saja",
+    "channelName": "로우프라이스사자"
   },
   "sections": [
     {

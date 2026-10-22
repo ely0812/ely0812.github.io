@@ -42,3 +42,6 @@ h2 a { text-decoration: none; }
 table { border-collapse: collapse; width: 100%; font-size: 14px; }
 th, td { border-bottom: 1px solid var(--line); padding: 8px; text-align: left; }
 footer { border-top: 1px solid var(--line); padding: 24px 16px; text-align: center; color: var(--muted); font-size: 13px; }
+.tg { display: block; padding: 10px 14px; border-radius: 10px; text-decoration: none; font-size: 14px; background: #229ED9; color: #fff; }
+.tg-top { margin: 0 0 16px; }
+.tg-bottom { margin: 40px 0 0; padding: 16px; text-align: center; font-size: 16px; }
