@@ -60,6 +60,7 @@ function page({ path: urlPath, title, description, body, items = [] }) {
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${title === config.siteName ? esc(title) : `${esc(title)} | ${esc(config.siteName)}`}</title>
 <meta name="description" content="${esc(description)}">
+${verificationMeta}
 <link rel="canonical" href="${canonical}">
 <meta property="og:title" content="${esc(title)}">
 <meta property="og:description" content="${esc(description)}">
@@ -82,6 +83,12 @@ ${body}
 </body>
 </html>`;
 }
+
+const v = config.verification ?? {};
+const verificationMeta = [
+  v.google && `<meta name="google-site-verification" content="${esc(v.google)}">`,
+  v.naver && `<meta name="naver-site-verification" content="${esc(v.naver)}">`,
+].filter(Boolean).join('\n');
 
 const pages = [];
 const add = (p) => pages.push(p);

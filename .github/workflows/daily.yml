@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: '13 22 * * *' # 매일 07:13 KST
   workflow_dispatch:
+  push: # 설정·코드를 바꾸면 바로 다시 배포
+    branches: [main]
+    paths: ['site.config.json', 'src/**', 'templates/**']
 
 permissions:
   contents: write

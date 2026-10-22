@@ -4,17 +4,56 @@
   "baseUrl": "https://ely0812.github.io/coupang",
   "lang": "ko",
   "disclosure": "이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.",
+  "verification": {
+    "google": "YcUKrAfdaLRJ8azNWwCfai0vFIRUs4cJaLNrErl4rQA",
+    "naver": ""
+  },
   "categories": [
-    { "id": 1016, "slug": "digital", "name": "가전디지털" },
-    { "id": 1013, "slug": "kitchen", "name": "주방용품" },
-    { "id": 1014, "slug": "living", "name": "생활용품" },
-    { "id": 1012, "slug": "food", "name": "식품" },
-    { "id": 1029, "slug": "pet", "name": "반려동물용품" }
+    {
+      "id": 1016,
+      "slug": "digital",
+      "name": "가전디지털"
+    },
+    {
+      "id": 1013,
+      "slug": "kitchen",
+      "name": "주방용품"
+    },
+    {
+      "id": 1014,
+      "slug": "living",
+      "name": "생활용품"
+    },
+    {
+      "id": 1012,
+      "slug": "food",
+      "name": "식품"
+    },
+    {
+      "id": 1029,
+      "slug": "pet",
+      "name": "반려동물용품"
+    }
   ],
   "guides": [
-    { "slug": "wireless-earbuds", "title": "가성비 무선 이어폰 추천", "keyword": "무선 이어폰", "intro": "출퇴근·운동용으로 많이 찾는 무선 이어폰을 가격대와 배송 조건 기준으로 정리했습니다." },
-    { "slug": "air-fryer", "title": "에어프라이어 추천", "keyword": "에어프라이어", "intro": "용량과 가격을 기준으로 지금 많이 팔리는 에어프라이어를 모았습니다." },
-    { "slug": "robot-vacuum", "title": "로봇청소기 추천", "keyword": "로봇청소기", "intro": "흡입·물걸레 겸용 여부와 가격 기준으로 살펴볼 만한 로봇청소기입니다." }
+    {
+      "slug": "wireless-earbuds",
+      "title": "가성비 무선 이어폰 추천",
+      "keyword": "무선 이어폰",
+      "intro": "출퇴근·운동용으로 많이 찾는 무선 이어폰을 가격대와 배송 조건 기준으로 정리했습니다."
+    },
+    {
+      "slug": "air-fryer",
+      "title": "에어프라이어 추천",
+      "keyword": "에어프라이어",
+      "intro": "용량과 가격을 기준으로 지금 많이 팔리는 에어프라이어를 모았습니다."
+    },
+    {
+      "slug": "robot-vacuum",
+      "title": "로봇청소기 추천",
+      "keyword": "로봇청소기",
+      "intro": "흡입·물걸레 겸용 여부와 가격 기준으로 살펴볼 만한 로봇청소기입니다."
+    }
   ],
   "limits": {
     "searchPerRun": 3,
