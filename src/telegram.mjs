@@ -13,6 +13,15 @@ if (!config.telegram.enabled || !token || !chatId) {
   console.log('⏭ 텔레그램 비활성화 (site.config.json telegram.enabled / TELEGRAM_* 환경변수 확인)');
   process.exit(0);
 }
+if (process.argv.includes('--test')) {
+  const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text: `✅ ${config.siteName} 채널 연결 테스트\n${config.baseUrl}` }),
+  });
+  console.log(res.ok ? '✔ 텔레그램 테스트 메시지 전송 성공' : `✖ 실패: ${res.status} ${await res.text()}`);
+  process.exit(res.ok ? 0 : 1);
+}
 const state = await read('data/state.json');
 if (state.mode !== 'live') {
   console.log('⏭ MOCK 데이터는 텔레그램에 게시하지 않습니다');
