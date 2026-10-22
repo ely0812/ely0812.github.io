@@ -156,7 +156,7 @@ add({
 });
 
 for (const c of categories) {
-  const items = list(`best:${c.slug}`);
+  const items = list(`best:${c.slug}`).slice(0, 20);
   add({ path: `/best/${c.slug}/`, title: `${c.name} 베스트 상품 순위`, description: `쿠팡 ${c.name} 카테고리에서 지금 많이 팔리는 상품 ${items.length}개와 가격 추이.`, items, body: crumb(c.section) + grid(items) });
 }
 

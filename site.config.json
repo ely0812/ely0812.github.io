@@ -370,8 +370,10 @@
     }
   ],
   "limits": {
-    "searchPerRun": 6,
-    "productsPerList": 10
+    "searchPerRun": 8,
+    "productsPerList": 10,
+    "maxSearchPerHour": 20,
+    "bestLimit": 50
   },
   "telegram": {
     "enabled": true,
@@ -382,7 +384,8 @@
       7
     ],
     "channel": "lowprice_saja",
-    "channelName": "로우프라이스사자"
+    "channelName": "로우프라이스사자",
+    "morningDigest": true
   },
   "sections": [
     {

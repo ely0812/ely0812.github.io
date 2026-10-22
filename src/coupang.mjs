@@ -45,7 +45,9 @@ export function createClient({ accessKey, secretKey, subId } = {}) {
     });
     const json = await res.json().catch(() => ({}));
     if (!res.ok || (json.rCode && json.rCode !== '0')) {
-      throw new Error(`Coupang API ${res.status} ${endpoint}: ${json.rMessage || json.message || 'unknown error'}`);
+      const err = new Error(`Coupang API ${res.status} ${endpoint}: ${json.rMessage || json.message || 'unknown error'}`);
+      err.status = res.status;
+      throw err;
     }
     return json.data;
   }

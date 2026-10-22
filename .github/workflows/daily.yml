@@ -2,7 +2,7 @@ name: daily
 
 on:
   schedule:
-    - cron: '13 1-22/3 * * *' # 3시간마다 (KST 07·10·13·16·19·22·01·04시 13분)
+    - cron: '13 * * * *' # 매시 13분
   workflow_dispatch:
   push: # 설정·코드를 바꾸면 바로 다시 배포
     branches: [main]

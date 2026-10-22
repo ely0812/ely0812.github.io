@@ -32,6 +32,7 @@ if (state.mode !== 'live') {
   process.exit(0);
 }
 
+const escAttr = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const kstHour = new Date(Date.now() + 9 * 36e5).getUTCHours();
 const [quietFrom, quietTo] = config.telegram.quietHours ?? [0, 7];
 if (kstHour >= quietFrom && kstHour < quietTo) {
@@ -40,6 +41,24 @@ if (kstHour >= quietFrom && kstHour < quietTo) {
 }
 
 const products = await read('data/products.json');
+const today0 = new Date(Date.now() + 9 * 36e5).toISOString().slice(0, 10);
+
+// Morning digest: once a day, the first run after quiet hours posts today's top goldbox deals.
+if (config.telegram.morningDigest && state.digestDate !== today0 && kstHour < 12) {
+  const top = (state.lists.goldbox ?? []).map((id) => products[id]).filter(Boolean)
+    .sort((a, b) => (b.discountRate ?? 0) - (a.discountRate ?? 0)).slice(0, 5);
+  if (top.length) {
+    const lines = top.map((p, i) => `${i + 1}. <a href="${escAttr(p.url)}">${escAttr(p.name)}</a>\n    <b>${p.price.toLocaleString('ko-KR')}원</b>${p.discountRate ? ` (-${p.discountRate}%)` : ''}${p.rocket ? ' 🚀' : ''}`);
+    const text = `<i>${escAttr(config.disclosure)}</i>\n\n☀️ <b>오늘의 쿠팡 골드박스 TOP ${top.length}</b> (하루 한정 특가)\n\n${lines.join('\n\n')}\n\n📊 <a href="${config.baseUrl.replace(/\/$/, '')}/goldbox/">골드박스 전체 보기</a>`;
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', link_preview_options: { is_disabled: true } }),
+    });
+    if (res.ok) { state.digestDate = today0; console.log('✔ 아침 골드박스 요약 게시'); }
+    else console.warn(`⚠ 아침 요약 전송 실패: ${res.status} ${await res.text()}`);
+  }
+}
 const posted = new Set(state.telegramPosted ?? []);
 const today = new Date(Date.now() + 9 * 36e5).toISOString().slice(0, 10); // KST date
 const drops = priceDrops(products, { minDropPercent: 3, limit: 100 })

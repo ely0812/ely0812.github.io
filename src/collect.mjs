@@ -59,20 +59,42 @@ for (const key of Object.keys(lists)) if (!valid.has(key)) delete lists[key];
 const gold = await safe('goldbox', () => api.goldbox());
 if (gold) lists.goldbox = upsert(gold).slice(0, n * 2);
 
+// Track more best-sellers than we display so price drops are caught across a wider set.
+const bestLimit = config.limits.bestLimit ?? n;
 for (const c of config.categories) {
-  const best = await safe(`best ${c.name}`, () => api.best(c.id, n));
-  if (best) lists[`best:${c.slug}`] = upsert(best).slice(0, n);
+  let best = await safe(`best ${c.name}`, () => api.best(c.id, bestLimit));
+  if (!best && bestLimit > n) best = await safe(`best ${c.name} (limit ${n})`, () => api.best(c.id, n));
+  if (best) lists[`best:${c.slug}`] = upsert(best);
 }
 
-// Search API is rate-limited, so rotate through a few guides per run
-// (runs every 3 hours, so every guide refreshes about once a day).
+// The search API has the tightest (and undocumented) quota, and exceeding it may
+// block the key, so cap calls per rolling hour and back off on 403/429.
 const g = config.guides;
-for (let i = 0; i < Math.min(config.limits.searchPerRun, g.length); i++) {
-  const guide = g[(state.guideCursor + i) % g.length];
-  const found = await safe(`search "${guide.keyword}"`, () => api.search(guide.keyword, n));
-  if (found) lists[`guide:${guide.slug}`] = upsert(found).slice(0, n);
+const now = Date.now();
+state.searchLog = (state.searchLog ?? []).filter((t) => now - Date.parse(t) < 36e5);
+const budget = Math.min(config.limits.searchPerRun, (config.limits.maxSearchPerHour ?? 10) - state.searchLog.length, g.length);
+if (state.searchPausedUntil && now < Date.parse(state.searchPausedUntil)) {
+  console.log(`⏸ 검색 API 일시 중지 중 (${state.searchPausedUntil}까지)`);
+} else {
+  let done = 0;
+  for (; done < budget; done++) {
+    const guide = g[(state.guideCursor + done) % g.length];
+    state.searchLog.push(new Date().toISOString());
+    try {
+      const found = await api.search(guide.keyword, n);
+      if (found.length) lists[`guide:${guide.slug}`] = upsert(found).slice(0, n);
+    } catch (e) {
+      console.warn(`⚠ search "${guide.keyword}" 실패: ${e.message}`);
+      if (e.status === 403 || e.status === 429) {
+        state.searchPausedUntil = new Date(now + 36e5).toISOString();
+        console.warn('⏸ 호출 한도로 보여 1시간 동안 검색을 멈춥니다');
+        break;
+      }
+    }
+  }
+  state.guideCursor = (state.guideCursor + done) % Math.max(g.length, 1);
+  console.log(`🔎 검색 ${done}회 (최근 1시간 ${state.searchLog.length}회 / 상한 ${config.limits.maxSearchPerHour ?? 10})`);
 }
-state.guideCursor = (state.guideCursor + config.limits.searchPerRun) % Math.max(g.length, 1);
 state.updatedAt = new Date().toISOString();
 state.mode = live ? 'live' : 'mock';
 
