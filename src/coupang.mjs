@@ -24,6 +24,10 @@ export function authorization(method, path, query, accessKey, secretKey, date = 
 }
 
 export function createClient({ accessKey, secretKey, subId } = {}) {
+  // Pasted secrets often carry stray spaces or newlines.
+  accessKey = accessKey?.trim();
+  secretKey = secretKey?.trim();
+  subId = subId?.trim() || undefined;
   if (!accessKey || !secretKey) throw new Error('COUPANG_ACCESS_KEY / COUPANG_SECRET_KEY 가 필요합니다');
 
   async function call(method, endpoint, params = {}, body) {
