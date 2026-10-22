@@ -26,3 +26,13 @@ test('priceDrops finds drops vs previous record, only for items seen on latest d
   const drops = priceDrops(products, { minDropPercent: 5 });
   assert.deepEqual(drops.map((d) => [d.product.id, d.percent]), [['a', 20]]);
 });
+
+test('priceDrops flags record lows only with 7+ days of history', () => {
+  const days = (prices) => prices.map((price, i) => ({ date: `2026-01-0${i + 1}`, price }));
+  const products = {
+    long: { id: 'long', price: 900, lastSeen: '2026-01-07', history: days([1000, 950, 980, 1000, 960, 990, 900]) },
+    short: { id: 'short', price: 900, lastSeen: '2026-01-07', history: [{ date: '2026-01-06', price: 1000 }, { date: '2026-01-07', price: 900 }] },
+  };
+  const byId = Object.fromEntries(priceDrops(products, { minDropPercent: 1 }).map((d) => [d.product.id, d.recordLow]));
+  assert.deepEqual(byId, { long: true, short: false });
+});

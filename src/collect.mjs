@@ -64,14 +64,20 @@ for (const c of config.categories) {
   if (best) lists[`best:${c.slug}`] = upsert(best).slice(0, n);
 }
 
-// Search API is rate-limited, so rotate through guides a few per run.
+// Search API is rate-limited: search only on the first run of each day,
+// rotating through a few guides at a time. Goldbox/best run every time.
 const g = config.guides;
-for (let i = 0; i < Math.min(config.limits.searchPerRun, g.length); i++) {
-  const guide = g[(state.guideCursor + i) % g.length];
-  const found = await safe(`search "${guide.keyword}"`, () => api.search(guide.keyword, n));
-  if (found) lists[`guide:${guide.slug}`] = upsert(found).slice(0, n);
+if (state.searchDate !== today) {
+  for (let i = 0; i < Math.min(config.limits.searchPerRun, g.length); i++) {
+    const guide = g[(state.guideCursor + i) % g.length];
+    const found = await safe(`search "${guide.keyword}"`, () => api.search(guide.keyword, n));
+    if (found) lists[`guide:${guide.slug}`] = upsert(found).slice(0, n);
+  }
+  state.guideCursor = (state.guideCursor + config.limits.searchPerRun) % Math.max(g.length, 1);
+  state.searchDate = today;
+} else {
+  console.log('⏭ 검색 API는 오늘 이미 호출함 (하루 1회)');
 }
-state.guideCursor = (state.guideCursor + config.limits.searchPerRun) % Math.max(g.length, 1);
 state.updatedAt = new Date().toISOString();
 state.mode = live ? 'live' : 'mock';
 

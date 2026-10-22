@@ -132,8 +132,12 @@
     "productsPerList": 10
   },
   "telegram": {
-    "enabled": false,
+    "enabled": true,
     "maxPostsPerRun": 3,
-    "minDropPercent": 10
+    "minDropPercent": 10,
+    "quietHours": [
+      0,
+      7
+    ]
   }
 }
