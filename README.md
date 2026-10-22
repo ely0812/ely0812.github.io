@@ -1,11 +1,13 @@
-# coupang
+# 생활 최저가 노트 (ely0812.github.io)
 
-쿠팡 파트너스 상품(골드박스 · 카테고리 베스트 · 키워드 검색)을 **매일 자동 수집**하고, **가격 이력**을 쌓아서 SEO용 정적 사이트로 발행합니다. 가격이 내려간 상품은 텔레그램 채널에 자동으로 올릴 수도 있습니다(선택).
+> 운영 현황·결정 배경·남은 할 일은 [HANDOFF.md](HANDOFF.md)를 보세요.
+
+쿠팡 파트너스 상품(골드박스 · 카테고리 베스트 · 키워드 검색)을 **매시간 자동 수집**하고, **가격 이력**을 쌓아서 SEO용 정적 사이트로 발행합니다. 가격이 내려간 상품은 텔레그램 채널에 자동으로 올릴 수도 있습니다(선택).
 
 비용은 **0원**입니다. GitHub Actions(크론)와 GitHub Pages(호스팅)만 씁니다.
 
 ```
-GitHub Actions (매일 07:13 KST)
+GitHub Actions (매시 13분)
   ├─ collect  : 쿠팡 파트너스 Open API → data/products.json (가격 이력 90일)
   ├─ build    : dist/ 정적 HTML + sitemap.xml + rss.xml + robots.txt
   ├─ notify   : 가격 하락 상품 → 텔레그램 채널 (선택)
@@ -39,7 +41,7 @@ npm test
    - Secrets: `COUPANG_ACCESS_KEY`, `COUPANG_SECRET_KEY` (파트너스 → 추가기능 → Open API에서 발급)
    - Variables(선택): `COUPANG_SUB_ID` (채널별 실적 구분용)
 4. Actions → **check-coupang-api**를 수동 실행합니다. 서명이 맞는지, 해외 IP에서 접속되는지 1회 확인하는 단계입니다.
-5. Actions → **daily**를 수동 실행합니다. 그다음부터는 매일 자동으로 돕니다.
+5. Actions → **daily**를 수동 실행합니다. 그다음부터는 매시간 자동으로 돕니다.
 6. `site.config.json`의 `baseUrl`, `siteName`, `categories`, `guides`를 내 니치에 맞게 바꿉니다.
 
 키를 넣으면 첫 LIVE 실행 때 샘플 데이터가 자동으로 지워집니다.
