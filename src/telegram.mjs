@@ -9,6 +9,10 @@ const read = async (f) => JSON.parse(await fs.readFile(path.join(ROOT, f), 'utf8
 const config = await read('site.config.json');
 const { TELEGRAM_BOT_TOKEN: token, TELEGRAM_CHAT_ID: chatId } = process.env;
 
+if (process.argv.includes('--test') && Boolean(token) !== Boolean(chatId)) {
+  console.error(`✖ 텔레그램 설정이 반쪽만 되어 있습니다: ${token ? 'TELEGRAM_CHAT_ID' : 'TELEGRAM_BOT_TOKEN'} 가 없습니다`);
+  process.exit(1);
+}
 if (!config.telegram.enabled || !token || !chatId) {
   console.log('⏭ 텔레그램 비활성화 (site.config.json telegram.enabled / TELEGRAM_* 환경변수 확인)');
   process.exit(0);

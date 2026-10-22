@@ -38,7 +38,7 @@ jobs:
           COUPANG_SECRET_KEY: ${{ secrets.COUPANG_SECRET_KEY }}
           COUPANG_SUB_ID: ${{ vars.COUPANG_SUB_ID }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID }}
+          TELEGRAM_CHAT_ID: ${{ vars.TELEGRAM_CHAT_ID || secrets.TELEGRAM_CHAT_ID }}
       # Committing price history daily also keeps the scheduled workflow from being auto-disabled.
       - name: Commit price history
         run: |
