@@ -1,7 +1,7 @@
 {
   "siteName": "오늘의 최저가 노트",
   "siteDescription": "쿠팡 골드박스·카테고리 베스트·키워드 추천 상품을 매일 자동으로 정리하고 가격 변동을 기록합니다.",
-  "baseUrl": "https://ely0812.github.io/coupang",
+  "baseUrl": "https://ely0812.github.io",
   "lang": "ko",
   "disclosure": "이 포스팅은 쿠팡 파트너스 활동의 일환으로, 이에 따른 일정액의 수수료를 제공받습니다.",
   "verification": {
