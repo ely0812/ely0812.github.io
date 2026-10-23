@@ -387,7 +387,10 @@
       7
     ],
     "digestHour": 7,
-    "flashDealPercent": 50
+    "tiers": {
+      "insane": 50,
+      "hot": 30
+    }
   },
   "sections": [
     {

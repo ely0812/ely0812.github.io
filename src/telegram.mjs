@@ -72,9 +72,22 @@ const send = (method, body) => fetch(`https://api.telegram.org/bot${token}/${met
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ chat_id: chatId, parse_mode: 'HTML', disable_notification: silent, ...body }),
 });
+// Hot-deal community style headline, tiered by discount. "역대급" is used only when the
+// price really is the lowest we have recorded, and says over how many days (no unfounded claims).
+function headline(percent, recordLow, days) {
+  const t = config.telegram.tiers ?? { insane: 50, hot: 30 };
+  const tags = [];
+  if (percent >= t.insane) tags.push('🔥 <b>무지성구매급 초특가</b>');
+  else if (percent >= t.hot) tags.push('⚡ <b>초특가</b>');
+  else tags.push('📉 <b>가격 하락</b>');
+  if (recordLow) tags.push(`🏆 <b>역대급 최저가</b> (${days}일 기록 중 최저)`);
+  const hurry = percent >= t.insane ? '\n⏰ 수량·시간 한정일 수 있어요. 곧 끝날 수 있음!' : '';
+  return tags.join(' · ') + hurry;
+}
+
 for (const { product: p, before, percent, recordLow } of drops) {
   // Disclosure goes first: SNS ad guidelines expect it at the top of the post.
-  const text = `<i>${esc(config.disclosure)}</i>\n\n${percent >= (config.telegram.flashDealPercent ?? 50) ? '⚡ <b>파격 할인</b> · 수량·시간 한정일 수 있어 곧 끝날 수 있어요\n' : ''}${recordLow ? '🏆 <b>기록 최저가</b>\n' : ''}📉 <b>${esc(p.name)}</b>\n${before.toLocaleString('ko-KR')}원 → <b>${p.price.toLocaleString('ko-KR')}원</b> (-${percent}%)\n${p.rocket ? '🚀 로켓배송\n' : ''}\n👉 <a href="${esc(p.url)}">쿠팡에서 보기</a>\n📊 <a href="${site}/deals/">오늘의 가격 하락 전체</a>`;
+  const text = `<i>${esc(config.disclosure)}</i>\n\n${headline(percent, recordLow, p.history.length)}\n<b>${esc(p.name)}</b>\n${before.toLocaleString('ko-KR')}원 → <b>${p.price.toLocaleString('ko-KR')}원</b> (-${percent}%)\n${p.rocket ? '🚀 로켓배송\n' : ''}\n👉 <a href="${esc(p.url)}">쿠팡에서 보기</a>\n📊 <a href="${site}/deals/">오늘의 가격 하락 전체</a>`;
   // Fall back to a text message if Telegram cannot fetch the product image.
   let res = await send('sendPhoto', { photo: p.image, caption: text });
   if (!res.ok) res = await send('sendMessage', { text, link_preview_options: { is_disabled: true } });
