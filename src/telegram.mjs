@@ -74,7 +74,7 @@ const send = (method, body) => fetch(`https://api.telegram.org/bot${token}/${met
 });
 for (const { product: p, before, percent, recordLow } of drops) {
   // Disclosure goes first: SNS ad guidelines expect it at the top of the post.
-  const text = `<i>${esc(config.disclosure)}</i>\n\n${recordLow ? '🏆 <b>기록 최저가</b>\n' : ''}📉 <b>${esc(p.name)}</b>\n${before.toLocaleString('ko-KR')}원 → <b>${p.price.toLocaleString('ko-KR')}원</b> (-${percent}%)\n${p.rocket ? '🚀 로켓배송\n' : ''}\n👉 <a href="${esc(p.url)}">쿠팡에서 보기</a>\n📊 <a href="${site}/deals/">오늘의 가격 하락 전체</a>`;
+  const text = `<i>${esc(config.disclosure)}</i>\n\n${percent >= (config.telegram.flashDealPercent ?? 50) ? '⚡ <b>파격 할인</b> · 수량·시간 한정일 수 있어 곧 끝날 수 있어요\n' : ''}${recordLow ? '🏆 <b>기록 최저가</b>\n' : ''}📉 <b>${esc(p.name)}</b>\n${before.toLocaleString('ko-KR')}원 → <b>${p.price.toLocaleString('ko-KR')}원</b> (-${percent}%)\n${p.rocket ? '🚀 로켓배송\n' : ''}\n👉 <a href="${esc(p.url)}">쿠팡에서 보기</a>\n📊 <a href="${site}/deals/">오늘의 가격 하락 전체</a>`;
   // Fall back to a text message if Telegram cannot fetch the product image.
   let res = await send('sendPhoto', { photo: p.image, caption: text });
   if (!res.ok) res = await send('sendMessage', { text, link_preview_options: { is_disabled: true } });

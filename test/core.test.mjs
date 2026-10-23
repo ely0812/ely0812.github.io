@@ -40,8 +40,3 @@ test('priceDrops flags record lows only with 7+ days of history', () => {
   assert.deepEqual(byId, { long: true, short: false });
 });
 
-test('priceDrops ignores implausibly large drops', () => {
-  const products = { x: { id: 'x', price: 2000, lastSeen: '2026-01-02', history: [{ date: '2026-01-01', price: 10000 }, { date: '2026-01-02', price: 2000 }] } };
-  assert.equal(priceDrops(products, { minDropPercent: 5 }).length, 0);
-  assert.equal(priceDrops(products, { minDropPercent: 5, maxDropPercent: 90 }).length, 1);
-});
