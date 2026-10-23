@@ -85,13 +85,44 @@ function headline(percent, recordLow, days) {
   return tags.join(' · ') + hurry;
 }
 
+// Deal-end notices: when an alerted item's price climbs back (>= endRisePercent above the
+// alerted price), mark the original post as ended and reply to it, so late readers don't
+// click through to an expired deal. End notices carry no affiliate link, so no disclosure.
+const active = (state.activeDeals ??= {});
+const endRise = 1 + (config.telegram.endRisePercent ?? 5) / 100;
+const staleBefore = new Date(Date.now() + 9 * 36e5 - 7 * 864e5).toISOString().slice(0, 10);
+for (const [id, d] of Object.entries(active)) {
+  const p = products[id];
+  if (!p || p.lastSeen < staleBefore) { delete active[id]; continue; }
+  if (p.price < d.price * endRise) continue;
+  const won = (n) => `${n.toLocaleString('ko-KR')}원`;
+  const mark = `⛔ <b>종료된 특가</b> · 지금 ${won(p.price)}`;
+  const edited = d.text.replace('\n\n', `\n\n${mark}\n`);
+  if (d.messageId) {
+    await send(d.kind === 'photo' ? 'editMessageCaption' : 'editMessageText', {
+      message_id: d.messageId,
+      ...(d.kind === 'photo' ? { caption: edited } : { text: edited, link_preview_options: { is_disabled: true } }),
+    });
+  }
+  const res = await send('sendMessage', {
+    text: `⛔ <b>특가 종료</b>\n${esc(d.name)}\n${won(d.price)} → 지금 <b>${won(p.price)}</b>\n\n늦게 보신 분은 다음 알림을 기다려 주세요 🙏`,
+    disable_notification: true,
+    ...(d.messageId ? { reply_parameters: { message_id: d.messageId, allow_sending_without_reply: true } } : {}),
+  });
+  if (res.ok) { delete active[id]; console.log(`⛔ 특가 종료 알림: ${d.name}`); }
+  else console.warn(`⚠ 종료 알림 실패: ${res.status} ${await res.text()}`);
+}
+
 for (const { product: p, before, percent, recordLow } of drops) {
   // Disclosure goes first: SNS ad guidelines expect it at the top of the post.
   const text = `<i>${esc(config.disclosure)}</i>\n\n${headline(percent, recordLow, p.history.length)}\n<b>${esc(p.name)}</b>\n${before.toLocaleString('ko-KR')}원 → <b>${p.price.toLocaleString('ko-KR')}원</b> (-${percent}%)\n${p.rocket ? '🚀 로켓배송\n' : ''}\n👉 <a href="${esc(p.url)}">쿠팡에서 보기</a>\n📊 <a href="${site}/deals/">오늘의 가격 하락 전체</a>`;
   // Fall back to a text message if Telegram cannot fetch the product image.
+  let kind = 'photo';
   let res = await send('sendPhoto', { photo: p.image, caption: text });
-  if (!res.ok) res = await send('sendMessage', { text, link_preview_options: { is_disabled: true } });
+  if (!res.ok) { kind = 'text'; res = await send('sendMessage', { text, link_preview_options: { is_disabled: true } }); }
   if (!res.ok) { console.warn(`⚠ 텔레그램 전송 실패: ${res.status} ${await res.text()}`); continue; }
+  const messageId = (await res.json().catch(() => ({})))?.result?.message_id;
+  active[p.id] = { name: p.name, price: p.price, before, messageId, kind, text, postedAt: today };
   posted.add(`${p.id}:${today}`);
   console.log(`✔ 텔레그램 게시: ${p.name}`);
 }

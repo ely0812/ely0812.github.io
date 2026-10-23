@@ -390,7 +390,8 @@
     "tiers": {
       "insane": 50,
       "hot": 30
-    }
+    },
+    "endRisePercent": 5
   },
   "sections": [
     {
