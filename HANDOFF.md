@@ -115,7 +115,7 @@ test/core.test.mjs      node:test 4개
 - 체인이 끊겨도 `heartbeat.yml`의 6시간 cron이 다시 살립니다(GitHub cron이 동작할 경우).
 
 ## 6-2. 네이버 블로그 자동화 (2026-10-24, 사용자 맥 전용)
-- **글 생성(이 저장소):** `node src/blog.mjs --out <outbox> --ledger <ledger.json>`. 하루 최대 2개를 만듭니다. ① 가격 하락 모음은 매일, ② 50% 이상 파격 할인 글(7일 안에 같은 상품 반복 금지)이 있으면 그것을, 없으면 품목 가이드(30일 안에 반복 금지)를 만듭니다. `post.json`에 `blocks`(문단·굵게·링크·이미지 위치)와 미리보기 `preview.html`을 씁니다.
+- **글 생성(이 저장소):** `node src/blog.mjs --out <outbox> --ledger <ledger.json>`. 하루 최대 2개를 만듭니다. ① 가격 하락 **기록**("○월 ○일 ○시 기준" 가격으로 표기)과 ② 품목 가이드(30일 안에 반복 금지)입니다. 파격 할인 글은 임시저장 동안 할인이 끝나 지난 글이 되기 쉬워 블로그에서 뺐습니다(사용자 결정, `blog.includeFlash=false`). 빠른 할인은 텔레그램이 맡습니다. `post.json`에 `blocks`(문단·굵게·링크·이미지 위치)와 미리보기 `preview.html`을 씁니다.
 - **업로드(저장소 밖):** `~/abbys/naver-blog-tool/`에 있습니다. 제3자 도구 [naver-blog-automation-shared](https://github.com/baboplater-blip/naver-blog-automation-shared)의 로컬 사본과 직접 만든 `adapter/coupang_drafts.py`로 구성됩니다. 이 도구는 **재배포 금지 라이선스**라서 공개 저장소에 올리지 않습니다.
   - 블로그 전용 크롬(`start_blog_chrome.sh`, 포트 9222, 별도 프로필에서 네이버 로그인 유지)에 붙어 이미지를 업로드합니다.
   - 그다음 본문을 SmartEditor 컴포넌트로 직접 구성하고(링크 노드 `{"link":{"url":..,"@ctype":"urlLink"}}`, 이미지는 업로드 순서대로 해당 상품 아래), **[저장](임시저장)** 만 누릅니다. 발행은 사용자가 직접 합니다.
