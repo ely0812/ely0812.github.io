@@ -114,6 +114,16 @@ test/core.test.mjs      node:test 4개
 - 보조 장치 `heartbeat.yml`을 만들었습니다. 동작하려면 **Settings → Environments → `heartbeat` → Wait timer 55분** 설정이 필요합니다(이 세션의 프록시는 환경 API를 막고 있어 사용자가 직접 설정). 설정한 뒤 Actions에서 heartbeat를 한 번 수동 실행하면 체인이 시작됩니다.
 - 체인이 끊겨도 `heartbeat.yml`의 6시간 cron이 다시 살립니다(GitHub cron이 동작할 경우).
 
+## 6-2. 네이버 블로그 자동화 (2026-10-24, 사용자 맥 전용)
+- **글 생성(이 저장소):** `node src/blog.mjs --out <outbox> --ledger <ledger.json>`. 하루 최대 2개를 만듭니다. ① 가격 하락 모음은 매일, ② 50% 이상 파격 할인 글(7일 안에 같은 상품 반복 금지)이 있으면 그것을, 없으면 품목 가이드(30일 안에 반복 금지)를 만듭니다. `post.json`에 `blocks`(문단·굵게·링크·이미지 위치)와 미리보기 `preview.html`을 씁니다.
+- **업로드(저장소 밖):** `~/abbys/naver-blog-tool/`에 있습니다. 제3자 도구 [naver-blog-automation-shared](https://github.com/baboplater-blip/naver-blog-automation-shared)의 로컬 사본과 직접 만든 `adapter/coupang_drafts.py`로 구성됩니다. 이 도구는 **재배포 금지 라이선스**라서 공개 저장소에 올리지 않습니다.
+  - 블로그 전용 크롬(`start_blog_chrome.sh`, 포트 9222, 별도 프로필에서 네이버 로그인 유지)에 붙어 이미지를 업로드합니다.
+  - 그다음 본문을 SmartEditor 컴포넌트로 직접 구성하고(링크 노드 `{"link":{"url":..,"@ctype":"urlLink"}}`, 이미지는 업로드 순서대로 해당 상품 아래), **[저장](임시저장)** 만 누릅니다. 발행은 사용자가 직접 합니다.
+  - 블로그 ID는 `hyemihyemi33`입니다.
+  - 주의: 업로드 직후 이미지 `src`가 비어 있으므로, 채워질 때까지 기다린 뒤 본문을 구성합니다. 기다리지 않으면 "존재하지 않는 이미지"로 저장됩니다.
+  - 원본 도구의 본문 변환은 `<a>` 링크 주소를 버리고 이미지를 균등하게 흩어 놓아서 쓰지 않습니다. 원본 도구에는 macOS 패치 2건(크롬 경로, Cmd+V)을 적용했습니다.
+- **매일 자동 실행:** launchd `~/Library/LaunchAgents/com.hyemi.coupang-blog.plist`가 매일 08:37에 `run_daily.sh`를 실행합니다(git pull → 글 생성 → 임시저장 → 맥 알림). 로그는 `~/abbys/naver-blog-tool/logs/`에 남습니다.
+
 ## 7. 남은 할 일 (우선순위 순)
 
 1. **커스텀 도메인 (사용자 결정 대기):** 후보는 `lowpricesaja.com`입니다. 사용자가 도메인을 산 뒤 할 일은 다음과 같습니다.

@@ -12,6 +12,7 @@
     "daily": "npm run collect && npm run build && npm run notify",
     "preview": "npx --yes serve dist -l 4173",
     "test": "node --test test/*.test.mjs",
-    "check": "node src/check.mjs"
+    "check": "node src/check.mjs",
+    "blog": "node src/blog.mjs"
   }
 }
