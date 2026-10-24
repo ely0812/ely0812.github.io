@@ -14,7 +14,11 @@ const ROOT = path.resolve(import.meta.dirname, '..');
 const read = async (f) => JSON.parse(await fs.readFile(path.join(ROOT, f), 'utf8'));
 
 const { values: args } = parseArgs({
-  options: { out: { type: 'string' }, ledger: { type: 'string' }, date: { type: 'string' } },
+  options: {
+    out: { type: 'string' }, ledger: { type: 'string' }, date: { type: 'string' },
+    // Set by the publish planner: how many posts the target day still has room for, and which kinds.
+    max: { type: 'string' }, kinds: { type: 'string' },
+  },
 });
 if (!args.out) {
   console.error('사용법: node src/blog.mjs --out <출력 폴더> [--ledger <기록 파일>]');
@@ -193,10 +197,14 @@ function guide() {
 }
 
 // ---- pick today's posts ----
-const slots = Math.max(0, blog.maxPerDay - postedToday.length);
+const maxToday = args.max !== undefined ? Number(args.max) : blog.maxPerDay;
+const kinds = args.kinds ? args.kinds.split(',') : null;
+const slots = Math.max(0, maxToday - postedToday.length);
 const picked = [];
 const done = new Set(postedToday.map((x) => x.kind));
-for (const make of blog.includeFlash ? [roundup, flash, guide] : [roundup, guide]) {
+const makers = { roundup, flash, guide };
+const order = kinds ?? (blog.includeFlash ? ['roundup', 'flash', 'guide'] : ['roundup', 'guide']);
+for (const make of order.map((k) => makers[k]).filter(Boolean)) {
   if (picked.length >= slots) break;
   if (make === guide && (done.has('flash') || picked.some((x) => x.kind === 'flash'))) continue; // flash replaces the guide
   if (done.has(make.name)) continue;
