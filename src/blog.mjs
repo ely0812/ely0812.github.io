@@ -31,10 +31,10 @@ const today = args.date ?? new Date(Date.now() + 9 * 36e5).toISOString().slice(0
 const [, mm, dd] = today.split('-').map(Number);
 const dateKo = `${mm}월 ${dd}일`;
 // Prices are a snapshot: name the data time so a post read days later is still accurate.
-const dataHour = new Date(Date.parse(state.updatedAt) + 9 * 36e5).getUTCHours();
-const asOf = `${dateKo} ${dataHour}시`;
+const dataKst = new Date(Date.parse(state.updatedAt) + 9 * 36e5);
+const asOf = `${dataKst.getUTCFullYear()}년 ${dataKst.getUTCMonth() + 1}월 ${dataKst.getUTCDate()}일 ${dataKst.getUTCHours()}시`;
 // Flash deals end within hours, so they stay on Telegram; drafts wait for review and would go stale.
-const blog = { maxPerDay: 2, roundupSize: 6, guideRepeatDays: 30, includeFlash: false, ...(config.blog ?? {}) };
+const blog = { maxPerDay: 2, roundupSize: 5, guideRepeatDays: 30, includeFlash: false, ...(config.blog ?? {}) };
 const insane = config.telegram?.tiers?.insane ?? 50;
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -86,6 +86,14 @@ function productBlock(p, extra = '') {
   return lines.join('\n');
 }
 
+// Plain facts per product. The AI writer only adds wording; every number shown comes from here.
+const fact = (p, before) => ({
+  id: p.id, name: p.name, price: p.price, before: before ?? null,
+  percent: before ? Math.round(((before - p.price) / before) * 100) : null,
+  lowest: low(p), days: p.history.length, rocket: p.rocket, freeShipping: p.freeShipping,
+  section: sectionName[sectionOf[p.id]] ?? '', url: p.url, image: p.image,
+});
+
 function wrap(title, intro, blocks, outro, tags, images, structured = []) {
   const content = [
     disclosure,
@@ -124,6 +132,7 @@ function roundup() {
   return {
     kind: 'roundup',
     key: `roundup:${today}`,
+    facts: { asOf, products: top.map((d) => fact(d.product, d.before)) },
     ...wrap(
       `${asOf} 기준 쿠팡 가격 하락 기록 TOP ${top.length} | ${secs.slice(0, 3).join('·') || '생활'}`,
       `${asOf} 기준 기록입니다. 매시간 가격을 기록하는 ${Object.keys(products).length.toLocaleString('ko-KR')}개 상품 중 전날보다 가격이 내려간 상품을 하락률 순으로 정리했어요(최대 ${top[0].percent}%). 할인은 이미 끝났을 수 있으니 링크에서 현재 가격을 꼭 확인하세요.`,
@@ -170,6 +179,7 @@ function guide() {
     kind: 'guide',
     key: `guide:${g.slug}:${today}`,
     guide: g.slug,
+    facts: { asOf, guide: { title: g.title, keyword: g.keyword, intro: g.intro, section: sectionName[g.section] ?? '' }, products: items.map((p) => fact(p)) },
     ...wrap(
       `${g.title} (${mm}월 가격 비교) | 살 만한 ${items.length}개와 가격 기록`,
       `${g.intro} 아래는 ${asOf} 기준 쿠팡 검색 상위 상품의 가격과 기록상 최저가예요.${atLow ? ` 이 중 ${atLow}개는 그 시각 기준 기록 최저가 근처였습니다.` : ''} 가격은 수시로 바뀌니 링크에서 현재 가격을 확인하세요.`,
