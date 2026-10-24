@@ -30,7 +30,11 @@ const base = config.baseUrl.replace(/\/$/, '');
 const today = args.date ?? new Date(Date.now() + 9 * 36e5).toISOString().slice(0, 10);
 const [, mm, dd] = today.split('-').map(Number);
 const dateKo = `${mm}월 ${dd}일`;
-const blog = { maxPerDay: 2, roundupSize: 6, guideRepeatDays: 30, ...(config.blog ?? {}) };
+// Prices are a snapshot: name the data time so a post read days later is still accurate.
+const dataHour = new Date(Date.parse(state.updatedAt) + 9 * 36e5).getUTCHours();
+const asOf = `${dateKo} ${dataHour}시`;
+// Flash deals end within hours, so they stay on Telegram; drafts wait for review and would go stale.
+const blog = { maxPerDay: 2, roundupSize: 6, guideRepeatDays: 30, includeFlash: false, ...(config.blog ?? {}) };
 const insane = config.telegram?.tiers?.insane ?? 50;
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -59,13 +63,13 @@ const badges = (p) => [p.rocket && '🚀 로켓배송', p.freeShipping && '무�
 //   { t: 'p', runs: [{ text, bold?, url? }] }  |  { t: 'h', text }  |  { t: 'img', src }
 const T = (text, o = {}) => ({ text, ...o });
 const para = (...runs) => ({ t: 'p', runs });
-function productBlocks(p, before) {
+function productBlocks(p, before, label = '현재') {
   const lowest = low(p);
   return [
     { t: 'h', text: p.name },
     { t: 'img', src: p.image },
-    para(T(before ? `${won(before)} → ` : ''), T(`현재 ${won(p.price)}`, { bold: true }), T(badges(p) ? ` · ${badges(p)}` : '')),
-    para(T(`가격 기록 ${p.history.length}일 · 기록 중 최저 ${won(lowest)}${p.price <= lowest && p.history.length > 1 ? ' (지금이 기록 최저가)' : ''}`)),
+    para(T(before ? `${won(before)} → ` : ''), T(`${label} ${won(p.price)}`, { bold: true }), T(badges(p) ? ` · ${badges(p)}` : '')),
+    para(T(`가격 기록 ${p.history.length}일 · 기록 중 최저 ${won(lowest)}${p.price <= lowest && p.history.length > 1 ? ' (기록 최저가)' : ''}`)),
     para(T('👉 쿠팡에서 가격 확인하기', { bold: true, url: p.url })),
   ];
 }
@@ -76,7 +80,7 @@ function productBlock(p, extra = '') {
     `<h3>${esc(p.name)}</h3>`,
     `<img src="${esc(p.image)}" alt="${esc(p.name)}">`,
     P(`${extra}<b>현재 ${won(p.price)}</b>${badges(p) ? ` · ${badges(p)}` : ''}`),
-    P(`가격 기록 ${p.history.length}일 · 기록 중 최저 ${won(lowest)}${p.price <= lowest && p.history.length > 1 ? ' (지금이 기록 최저가)' : ''}`),
+    P(`가격 기록 ${p.history.length}일 · 기록 중 최저 ${won(lowest)}${p.price <= lowest && p.history.length > 1 ? ' (기록 최저가)' : ''}`),
     P(link(p)),
   ];
   return lines.join('\n');
@@ -121,13 +125,13 @@ function roundup() {
     kind: 'roundup',
     key: `roundup:${today}`,
     ...wrap(
-      `${dateKo} 쿠팡 가격 하락 TOP ${top.length} | ${secs.slice(0, 3).join('·') || '생활'} 최저가 모음`,
-      `${dateKo} 기준으로 매시간 가격을 기록하는 ${Object.keys(products).length.toLocaleString('ko-KR')}개 상품 중, 어제보다 가격이 내려간 상품을 하락률 순으로 정리했어요. 최대 ${top[0].percent}%까지 내려갔습니다.`,
+      `${asOf} 기준 쿠팡 가격 하락 기록 TOP ${top.length} | ${secs.slice(0, 3).join('·') || '생활'}`,
+      `${asOf} 기준 기록입니다. 매시간 가격을 기록하는 ${Object.keys(products).length.toLocaleString('ko-KR')}개 상품 중 전날보다 가격이 내려간 상품을 하락률 순으로 정리했어요(최대 ${top[0].percent}%). 할인은 이미 끝났을 수 있으니 링크에서 현재 가격을 꼭 확인하세요.`,
       top.map((d, i) => `<h2>${i + 1}위 · -${d.percent}%</h2>\n${blocks[i]}`),
-      '할인 상품은 재고가 빠르게 소진되거나 가격이 금방 돌아갈 수 있으니, 필요한 물건이면 미리 가격을 확인해 보세요.',
+      '이 글의 가격은 위 시각 기준이에요. 할인은 몇 시간 만에 끝나기도 하니, 실시간 하락 알림은 텔레그램 채널에서 받아 보세요.',
       ['쿠팡최저가', '오늘의특가', '가격하락', '쿠팡할인', ...secs.map((s) => `${s.replace(/·/g, '')}최저가`)],
       top.map((d) => d.product.image),
-      top.flatMap((d, i) => [{ t: 'h', text: `${i + 1}위 · -${d.percent}%` }, ...productBlocks(d.product, d.before)]),
+      top.flatMap((d, i) => [{ t: 'h', text: `${i + 1}위 · -${d.percent}%` }, ...productBlocks(d.product, d.before, `${asOf} 기준`)]),
     ),
   };
 }
@@ -167,13 +171,13 @@ function guide() {
     key: `guide:${g.slug}:${today}`,
     guide: g.slug,
     ...wrap(
-      `${g.title} (${mm}월 가격 비교) | 지금 살 만한 ${items.length}개`,
-      `${g.intro} 아래는 ${dateKo} 기준 쿠팡 검색 상위 상품의 현재 가격과 기록상 최저가예요.${atLow ? ` 이 중 ${atLow}개는 지금 기록 최저가 근처입니다.` : ''}`,
+      `${g.title} (${mm}월 가격 비교) | 살 만한 ${items.length}개와 가격 기록`,
+      `${g.intro} 아래는 ${asOf} 기준 쿠팡 검색 상위 상품의 가격과 기록상 최저가예요.${atLow ? ` 이 중 ${atLow}개는 그 시각 기준 기록 최저가 근처였습니다.` : ''} 가격은 수시로 바뀌니 링크에서 현재 가격을 확인하세요.`,
       items.map((p, i) => `<h2>${i + 1}. ${esc(p.name.slice(0, 30))}</h2>\n${productBlock(p)}`),
       '가격이 자주 바뀌는 품목이라, 기록 최저가 근처일 때 사면 가장 이득이에요.',
       [g.keyword.replace(/\s/g, ''), `${g.keyword.replace(/\s/g, '')}추천`, `${g.keyword.replace(/\s/g, '')}최저가`, '쿠팡추천', `${(sectionName[g.section] ?? '').replace(/·/g, '')}추천`],
       items.map((p) => p.image),
-      items.flatMap((p, i) => [{ t: 'h', text: `${i + 1}. ${p.name.slice(0, 30)}` }, ...productBlocks(p)]),
+      items.flatMap((p, i) => [{ t: 'h', text: `${i + 1}. ${p.name.slice(0, 30)}` }, ...productBlocks(p, null, `${asOf} 기준`)]),
     ),
   };
 }
@@ -182,7 +186,7 @@ function guide() {
 const slots = Math.max(0, blog.maxPerDay - postedToday.length);
 const picked = [];
 const done = new Set(postedToday.map((x) => x.kind));
-for (const make of [roundup, flash, guide]) {
+for (const make of blog.includeFlash ? [roundup, flash, guide] : [roundup, guide]) {
   if (picked.length >= slots) break;
   if (make === guide && (done.has('flash') || picked.some((x) => x.kind === 'flash'))) continue; // flash replaces the guide
   if (done.has(make.name)) continue;
