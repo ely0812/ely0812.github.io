@@ -1,175 +1,172 @@
-# 인계 문서: 생활 최저가 노트 (쿠팡 파트너스 자동화)
+# 인계 문서: 로우프라이스사자 (쿠팡 파트너스 자동화)
 
-마지막 업데이트: 2026-10-24 · 클라우드 세션에서 만든 작업을 로컬이나 다른 세션에서 이어가기 위한 문서입니다.
+마지막 업데이트: 2026-10-25 · 다른 세션·다른 도구(Claude Code, Codex)에서 이어가기 위한 문서입니다.
+작업 규칙은 [CLAUDE.md](CLAUDE.md)(Claude용)와 [AGENTS.md](AGENTS.md)(Codex용)에 있습니다.
 
-## 1. 한눈에 보기
+## 0. 지금 상태 요약 (2026-10-25 기준)
+
+| 구성 | 상태 | 어디서 돌아가나 |
+|---|---|---|
+| 가격 추적 사이트 https://ely0812.github.io | ✅ 운영 중, 매시간 갱신 | GitHub Actions (클라우드) |
+| 텔레그램 채널 @lowprice_saja | ✅ 가격 하락·종료 알림, 아침 골드박스 요약 | GitHub Actions (클라우드) |
+| 네이버 블로그 hyemihyemi33 | ✅ 하루 1~2개 예약발행 (2026-10-26 시작) | **사용자 맥** (launchd, 11:40·20:10) |
+| 구글·네이버 검색 등록 | ✅ 사이트맵·RSS 제출 완료 | — |
+
+**바로 확인할 것**
+- 2026-10-26 21:10에 첫 블로그 글("침낭 추천" 가이드)이 예약되어 있습니다. 이 글은 가격이 10월 25일 0시 기준이라 발행 시점에는 약 45시간 전 값입니다. 사용자가 지우지 않고 두었습니다.
+- 발행된 뒤 쿠팡 링크가 실제로 눌리는지 확인해야 합니다. 에디터에서는 `se-link` 노드로 저장되는 것까지 확인했습니다.
+- **이 맥의 커밋 10개가 GitHub에 아직 push되지 않았습니다.** 이 맥에 GitHub 로그인이 없기 때문입니다(`gh auth login` 필요). 블로그 자동화는 로컬에서 돌아가므로 지금 작동에는 영향이 없습니다.
+
+## 1. 전체 구조
+
+```
+[GitHub Actions, 매시간]                          [사용자 맥, 11:40·20:10]
+쿠팡 API 수집 → data/ 커밋 ──git pull──▶ 글 생성(src/blog.mjs)
+  ├ 사이트 빌드·배포 (Pages)                       → AI 문장 작성 + 품질 검사(enrich.py)
+  └ 텔레그램 알림                                 → 네이버 예약발행(coupang_drafts.py)
+```
 
 | 항목 | 값 |
 |---|---|
-| 사이트 | https://ely0812.github.io |
-| 저장소 | https://github.com/ely0812/ely0812.github.io (public, 예전 이름 `coupang`) |
-| 텔레그램 채널 | 로우프라이스사자 · https://t.me/lowprice_saja |
-| 호스팅 | GitHub Pages (Source = GitHub Actions) |
-| 자동 실행 | `daily.yml`: 매시 13분 cron + 설정·코드 push 때 · `heartbeat.yml`: 55분 대기 타이머로 `daily`를 매시간 재실행하는 보조 장치 |
-| 검색 등록 | Google Search Console(`https://ely0812.github.io/`) 확인·사이트맵 제출 완료 · 네이버 서치어드바이저 확인·사이트맵·RSS 제출 완료 |
+| 저장소 | https://github.com/ely0812/ely0812.github.io (public, 예전 이름 `coupang`). 이 맥의 로컬 경로는 `~/abbys/coupang` |
+| 블로그 도구 | `~/abbys/naver-blog-tool/` (**저장소 밖, 재배포 금지 라이선스라 공개 저장소에 올리지 않음**) |
+| 블로그 | https://blog.naver.com/hyemihyemi33 · 이름 "로우프라이스사자 \| 쿠팡 최저가 기록" · 주제 상품리뷰 |
 | 수익 확인 | 쿠팡 파트너스 → 리포트 |
 
-**동작:** 매시간 쿠팡 파트너스 Open API로 골드박스, 카테고리 베스트(상위 50), 키워드 검색을 수집합니다. 그 결과를 `data/`에 날짜별 가격 이력으로 쌓습니다. 이어서 정적 사이트(`dist/`)를 만들어 Pages에 배포하고, 가격이 하락하면 텔레그램에 게시합니다.
+## 2. 사이트 + 텔레그램 (클라우드, 이 저장소)
 
-## 2. 사이트 구성
-
-4개 섹션, 키워드 가이드 45개, 베스트 카테고리 7개로 이루어져 있습니다(`site.config.json`).
-
-| 섹션 | 카테고리 ID | 가이드 |
-|---|---|---|
-| 육아 `baby` | 1011 출산/유아동, 1030 유아동패션, 1020 완구/취미 | 15 |
-| 자취·생필품 `living` | 1014 생활용품, 1012 식품 | 10 |
-| 캠핑 `camping` | 1017 스포츠/레저 | 10 |
-| 홈카페·주방 `homecafe` | 1013 주방용품 | 10 |
-
-페이지 경로는 아래와 같습니다. 이미 검색엔진에 제출했으니 **경로를 바꾸지 마세요.**
-- `/` 홈
-- `/deals/` 가격 하락
-- `/goldbox/` 골드박스
-- `/topic/<section>/` 섹션별 모아보기
-- `/best/<slug>/` 카테고리 베스트
-- `/guide/<slug>/` 키워드 가이드
-- `sitemap.xml`, `rss.xml`, `robots.txt`
-
-상품이 없는 가이드나 카테고리 페이지는 만들지 않고 사이트맵에서도 뺍니다.
-
-## 3. 파일 구조
-
+### 파일
 ```
-site.config.json        사이트 이름, 섹션, 카테고리, 가이드, 한도, 텔레그램, 검색엔진 확인 태그
-src/coupang.mjs         API 클라이언트 (HMAC 서명, CEA 헤더). err.status 포함
-src/collect.mjs         수집 → data/products.json, data/state.json
+site.config.json        사이트 이름, 섹션, 카테고리, 가이드 45개, 한도, 텔레그램, 검색엔진 확인 태그
+src/coupang.mjs         API 클라이언트 (HMAC, CEA 헤더). optionId() = vendorItemId 단위 추적
+src/collect.mjs         수집 → data/products.json, data/state.json (검색 시간당 상한·403/429 시 1시간 중지)
 src/build.mjs           data → dist/ 정적 HTML
-src/deals.mjs           priceDrops(): 직전 날짜 대비 하락률, recordLow(이력 7일 이상)
-src/telegram.mjs        아침 골드박스 요약 + 가격 하락 알림. `--test`로 연결 테스트
-src/check.mjs           API 키와 접속 점검 (키 길이와 앞 4자리만 표시)
-src/mock.mjs            키 없을 때 샘플 데이터
-templates/style.css     스타일 (다크모드 포함)
+src/deals.mjs           priceDrops(): 전날 대비 하락률, recordLow(이력 7일 이상)
+src/telegram.mjs        아침 요약, 하락 알림(단계별 머리말), 특가 종료 알림, --test
+src/blog.mjs            블로그 글 패키지 생성(아래 3절)
+src/check.mjs           API 키·접속 점검
 test/core.test.mjs      node:test 4개
-.github/workflows/daily.yml   매시 실행: collect → build → notify → data 커밋(pull --rebase) → Pages 배포
-.github/workflows/check.yml   수동 실행: API 점검 + 텔레그램 테스트 메시지
-.github/workflows/heartbeat.yml  'heartbeat' 환경의 대기 타이머(55분) 뒤 daily와 자기 자신을 재실행(체인). 타이머가 없으면 45분 미만 대기를 감지하고 멈춤
+.github/workflows/daily.yml      매시 13분 + 설정·코드 push 때: collect → build → notify → data 커밋 → Pages 배포
+.github/workflows/heartbeat.yml  'heartbeat' 환경 대기 타이머(55분)로 daily를 매시간 재실행하는 보조 장치
+.github/workflows/check.yml      수동: API 점검 + 텔레그램 테스트
 ```
 
-### data/state.json 주요 필드
-| 필드 | 의미 |
+### 사이트 구성
+- 4개 섹션: 육아, 자취·생필품, 캠핑, 홈카페·주방. 가이드 45개, 베스트 카테고리 7개.
+- **검색엔진에 제출한 경로는 바꾸지 마세요:** `/`, `/deals/`, `/goldbox/`, `/topic/<section>/`, `/best/<slug>/`, `/guide/<slug>/`
+- 상품이 없는 페이지는 만들지 않습니다.
+
+### 텔레그램 규칙
+- 하락률 10% 이상이거나 기록 최저가일 때 게시합니다. **큰 하락도 제외하지 않습니다**(사용자 결정: 짧은 진짜 핫딜일 수 있음).
+- 머리말은 하락률에 따라 단계로 나뉩니다.
+  - 50% 이상: "🔥 무지성구매급 초특가" + "⏰ 곧 끝날 수 있음"
+  - 30% 이상: "⚡ 초특가"
+  - 그 외: "📉 가격 하락"
+  - "🏆 역대급 최저가"는 실제 기록 최저(7일 이상)일 때만, "N일 기록 중 최저"라는 근거와 함께 씁니다.
+- 특가 종료: 알림 가격보다 5% 이상 오르면 원래 글에 "⛔ 종료된 특가"를 붙여 수정하고, 무음 답장을 보냅니다.
+- 0~7시에는 무음으로 보내고, 아침 요약은 7시~정오 사이에 1회 보냅니다. 한 번 실행에 최대 3개, 상품마다 하루 1회입니다.
+
+### 비밀값 (GitHub → Settings → Secrets and variables → Actions)
+`COUPANG_ACCESS_KEY`, `COUPANG_SECRET_KEY`, `TELEGRAM_BOT_TOKEN`(Secret), `TELEGRAM_CHAT_ID`(Secret 또는 Variable, `@lowprice_saja`). **값을 커밋하거나 채팅에 붙여 넣지 마세요.**
+
+## 3. 네이버 블로그 자동화 (사용자 맥)
+
+### 흐름 (`run_daily.sh` → `adapter/daily.py`)
+1. `git pull`로 최신 가격 데이터를 받습니다.
+2. 블로그용 크롬을 확인합니다(`start_blog_chrome.sh`, 포트 9222, 전용 프로필 `chrome-profile/`, 네이버 로그인 유지).
+3. `plan.py`가 다음 발행 자리를 정합니다(아래 일정 규칙).
+4. `node ~/abbys/coupang/src/blog.mjs --date --max --kinds`로 글 틀(`post.json`: `facts`, `blocks`)을 만듭니다.
+5. `enrich.py`
+   - 로컬 Claude CLI(`~/.local/bin/claude`, sonnet)가 문장만 씁니다: 서론, 상품 코멘트, 고르는 기준, FAQ 3개, 마무리, 태그 10개.
+   - 품질 검사를 통과한 글만 진행합니다(`_qc.json`).
+6. `coupang_drafts.py --reserve-at`
+   - 이미지를 업로드하고, `src`가 채워질 때까지 기다립니다.
+   - 본문을 SmartEditor 컴포넌트로 직접 구성합니다(링크·표·이미지 위치 보존).
+   - 원본 도구의 `_set_reservation_ex`로 카테고리·태그·시각을 넣고 확정합니다.
+7. 성공하면 `reservations.json`에 기록하고 맥 알림을 보냅니다.
+   - 예약 전에 실패하면 임시저장으로 보관합니다.
+   - 확정은 눌렸지만 결과가 불명확하면 재시도하지 않습니다(중복 방지).
+
+### 일정 규칙 (`adapter/schedule.json`)
+| 항목 | 값 |
 |---|---|
-| `mode` | `live`(실제 데이터) 또는 `mock`(샘플 데이터) |
-| `lists` | 페이지별 상품 ID 목록 (`goldbox`, `best:<slug>`, `guide:<slug>`) |
-| `guideCursor` | 다음에 검색할 가이드 위치 |
-| `searchLog` | 최근 1시간 검색 호출 시각. `limits.maxSearchPerHour`(20)로 제한 |
-| `searchPausedUntil` | 검색 API가 403/429를 반환하면 1시간 동안 검색 중지 |
-| `telegramPosted` | 오늘 이미 게시한 상품 (`<id>:<date>`, 중복 방지) |
-| `digestDate` | 아침 골드박스 요약을 마지막으로 보낸 날짜 |
+| 시작 | 2026-10-26. 처음 14일은 하루 1개(가이드와 가격 기록을 번갈아), 그 뒤 하루 2개 |
+| 시간대 | 12:40 가격 하락 기록(점심) / 21:10 가이드(저녁), 최소 간격 6시간 |
+| 신선도 | launchd가 발행 1시간 전(11:40, 20:10)에 실행해 **1.5시간 안의 자리만** 예약합니다. 그래서 가격은 1~2시간 전 값입니다 |
+| 놓쳤을 때 | 맥이 잠자기 상태 등으로 시간을 놓치면 그 자리는 건너뜁니다(낡은 가격으로 올리지 않음) |
+| 글 내용 | 가격은 모두 "YYYY년 M월 D일 H시 기준"으로 표기합니다. 파격 할인 단독 글은 블로그에서 뺐습니다(`blog.includeFlash=false`) |
 
-## 4. 비밀값과 설정 (GitHub → Settings → Secrets and variables → Actions)
+### 로컬 도구 폴더 (`~/abbys/naver-blog-tool/`)
+```
+naver_blog_v3/            받은 원본 도구. 로컬 패치: macOS 크롬 경로, Cmd+V, 설정 QV_CATEGORY_OVERRIDES["쿠팡상품"]
+adapter/daily.py          하루 실행 총괄
+adapter/plan.py           발행 일정 계산 (plan.py next 로 다음 자리 확인)
+adapter/schedule.json     일정 규칙
+adapter/enrich.py         AI 문장 + 품질 검사 (원본 도구 quality_validator·article_quality·ai_tell 사용)
+adapter/coupang_drafts.py 네이버 업로드 (예약 또는 임시저장)
+adapter/categories.json   카테고리 번호: 가격 하락 기록=6, 육아=7, 자취·생필품=8, 캠핑=9, 홈카페·주방=10
+outbox/<날짜-종류-slug>/  글 폴더: post.json, post.md, preview.html, _qc.json, _result.json/_error.json
+ledger.json               생성한 글 기록 (가이드 30일 반복 금지)
+reservations.json         예약 기록 (하루 개수 계산)
+logs/daily-YYYYMMDD.log   실행 로그
+blog_info_backup.json     블로그 예전 소개글 백업
+brand/profile.png         프로필 사자 그림 (저장소 brand/ 에도 사본)
+run_daily.sh, start_blog_chrome.sh
+```
+- launchd 설정 파일은 `~/Library/LaunchAgents/com.hyemi.coupang-blog.plist`입니다.
 
-| 이름 | 종류 | 설명 |
-|---|---|---|
-| `COUPANG_ACCESS_KEY` | Secret | 파트너스 Open API Access Key |
-| `COUPANG_SECRET_KEY` | Secret | 파트너스 Open API Secret Key |
-| `TELEGRAM_BOT_TOKEN` | Secret | @BotFather로 발급한 토큰 |
-| `TELEGRAM_CHAT_ID` | Secret 또는 Variable | `@lowprice_saja` (워크플로가 둘 다 읽음) |
-| `COUPANG_SUB_ID` | Variable (선택) | 채널별 실적 구분용, 미설정 |
+### 블로그 설정 (2026-10-25)
+- 이름 "로우프라이스사자 | 쿠팡 최저가 기록", 별명 "로우프라이스사자", 주제 상품리뷰, 사자 프로필 사진, 소개글(텔레그램과 대가성 문구 포함)로 바꿨습니다.
+- 카테고리: 가격 하락 기록 / 육아 / 자취·생필품 / 캠핑 / 홈카페·주방 (+ 기존 게시판).
+- 스킨은 아직 겨울 눈사람 테마입니다. 단순한 흰색 스킨으로 바꾸기를 권장합니다.
+- 상단 메뉴의 '서혜미'는 계정 실명이라 본인에게만 보이며, 블로그 설정으로는 바꿀 수 없습니다.
 
-**비밀값은 절대 커밋하거나 채팅에 붙여 넣지 마세요.** 로컬에서는 `.env`에 둡니다(`.gitignore` 처리됨).
+## 4. 확인된 사실 (실측)
+- 쿠팡 API는 GitHub 미국 IP에서도 접속됩니다. 검색을 시간당 28회 넘게 호출해도 차단되지 않았습니다.
+- 같은 productId라도 호출마다 다른 옵션(vendorItemId)이 옵니다. 그래서 옵션 단위로 추적합니다(2026-10-23 잘못된 알림 사고 이후).
+- SmartEditor 링크 형식은 `{"link":{"url":..,"@ctype":"urlLink"}}`이고, 표는 `@ctype: table` 컴포넌트로 들어가는 것을 확인했습니다.
+- 업로드 직후 이미지 `src`는 비어 있습니다. 채워지기 전에 본문을 구성하면 "존재하지 않는 이미지"로 저장됩니다.
+- 원본 도구의 본문 변환은 `<a>`의 주소를 버리고 이미지를 흩어 놓습니다. 그래서 쓰지 않습니다.
+- 예약은 에디터 상단 "예약 발행 N건"으로 확인할 수 있습니다. 예약된 글은 발행 전까지 글 목록에 보이지 않습니다.
+- 품질 검사 결과: 시험한 글 모두 통과했고, ai_tell은 low였습니다. "안전합니다" 같은 단정 표현은 걸러져 다시 쓰였습니다.
 
-## 5. 확인된 사실 vs 미확인
+## 5. 결정과 경계
+- **사이트:** 정적 사이트 + GitHub Pages로 비용 0원. 네이버 서치어드바이저가 호스트 단위 주소만 받아서 저장소 이름을 `ely0812.github.io`로 바꿨습니다.
+- **콘텐츠:** 핫딜카페 크롤링·재게시는 하지 않고, 자체 가격 이력만 씁니다. 체험 후기를 지어내지 않고 "고르는 기준"만 씁니다. AI는 숫자를 쓰지 않습니다.
+- **광고 표시:** 대가성 문구를 모든 페이지·글의 상단과 하단에 넣습니다(텔레그램은 맨 앞). `rel="sponsored nofollow"`를 쓰고, 자동 리다이렉트와 플로팅 배너는 쓰지 않습니다.
+- **Claude가 하지 않은 것(경계):**
+  - 네이버 봇 탐지를 속이는 기능은 넣지 않았습니다(사람인 척하는 입력 지연, 자동화 흔적 숨김, 브라우저 지문 바꾸기). 원본 도구의 해당 기능도 켜지 않았습니다. 사용자는 이에 동의하지 않았고 Codex로 하겠다고 했습니다.
+  - 되돌릴 수 없는 삭제(임시저장·예약 글 삭제)는 사용자가 직접 했습니다.
+  - 비밀번호 입력은 하지 않습니다. 네이버 로그인은 사용자가 블로그용 크롬에서 직접 합니다.
 
-**확인됨 (2026-10-22 실측)**
-- API 서명 방식이 정상 작동합니다. GitHub 미국 러너 IP(20.169.x.x)에서도 접속됩니다. IP 차단 없음.
-- 검색 API를 약 1시간 안에 28회 넘게 호출했지만 모두 성공했습니다. 블로그에 나온 "시간당 10회"는 현재 적용되지 않는 것으로 보입니다.
-- `bestcategories`에 `limit=50`을 넣어도 정상입니다. 카테고리 1030(유아동패션)도 유효합니다.
-- 상품 링크가 `link.coupang.com/re/AFFSDP?lptag=...` 형태로 오는 것을 확인했습니다. 이 링크로 구매하면 수수료가 추적됩니다.
-- 텔레그램 봇 게시 테스트에 성공했습니다.
+## 6. 일상 운영과 문제 해결
 
-- ⚠️ 같은 productId라도 호출마다 **다른 옵션(vendorItemId, 용량·묶음 수)** 이 돌아옵니다. 그래서 상품은 `vendorItemId`(옵션) 단위로 추적합니다(`optionId()`). 2026-10-23에는 productId 단위로 비교하는 버그 때문에 잘못된 "-45~50%" 알림 3건이 텔레그램에 나갔고, 같은 날 수정했습니다. 마이그레이션은 `state.idScheme = 'option'`으로 표시합니다.
-
-**미확인**
-- 파트너스 API의 공식 호출 한도. 블로그에서는 검색 10회/시간, 전체 100회/분, 초과 시 24시간 차단이라고 합니다.
-- 골드박스 응답에 `discountRate`가 들어오는지. 들어오지 않으면 아침 요약은 API가 준 순서대로 정렬됩니다.
-
-## 6. 내린 결정과 이유
-
-- **정적 사이트 + GitHub Actions/Pages:** 비용 0원이고 서버를 관리할 필요가 없습니다. Vercel Hobby는 비상업용 조건이라 제외했습니다.
-- **저장소 이름 변경 (`coupang` → `ely0812.github.io`):** 네이버 서치어드바이저는 `호스트 단위` URL만 받습니다.
-- **핫딜카페 크롤링이나 재게시는 하지 않음:** 약관 위반, 커뮤니티의 레퍼럴 금지 규칙, 글 복제 문제가 있습니다. 대신 자체 가격 이력으로 하락을 감지합니다.
-- **대가성 문구:** 사이트에서는 모든 페이지의 상단과 하단에 넣었습니다. 텔레그램에서는 글 맨 앞에 넣었습니다. 링크에는 `rel="sponsored nofollow"`를 붙였습니다. 자동 리다이렉트와 플로팅 배너는 쓰지 않습니다. 쿠팡이 "납치광고"를 제재한 사례가 있습니다.
-- **가이드 소개글:** 사용 후기가 아니라 "고르는 기준"으로만 썼습니다. 써 보지 않은 제품의 후기를 쓰면 광고 규정 위반입니다.
-- **텔레그램:**
-  - 하락률 10% 이상이거나 기록 최저가일 때 게시합니다(큰 하락도 제외하지 않음: 짧은 진짜 핫딜일 수 있다는 사용자 요청).
-  - **특가 종료 알림**(`state.activeDeals`, `endRisePercent`=5): 알림을 보낸 상품 가격이 알림 가격보다 5% 이상 오르면, 원래 게시물에 "⛔ 종료된 특가"를 붙여 수정하고 그 게시물에 무음 답장으로 "특가 종료"를 보냅니다. 7일 이상 보이지 않은 상품은 추적을 끝냅니다. 종료 알림에는 제휴 링크가 없어서 대가성 문구도 넣지 않습니다.
-  - 머리말(`telegram.tiers`): 50%↑ "🔥 무지성구매급 초특가"+"⏰ 곧 끝날 수 있음", 30%↑ "⚡ 초특가", 그 외 "📉 가격 하락". "🏆 역대급 최저가"는 실제 기록 최저(7일 이상 이력)일 때만, "N일 기록 중 최저"로 근거를 붙여 씁니다(과장광고 방지).
-  - 한 번 실행에 최대 3개, 상품마다 하루 1회입니다.
-  - 0~7시(KST)에도 게시하지만 무음(disable_notification)으로 보냅니다(`silentHours`).
-  - 아침 요약은 7시~정오 사이 하루 1회 보냅니다(`digestHour`).
-
-## 6-1. 예약 실행 문제와 보조 장치 (2026-10-22)
-- 새 저장소에서 GitHub cron(`daily.yml`, 매시 13분)이 3시간 연속 실행되지 않았습니다. 워크플로 상태는 active, 실행 주체는 ely0812로 정상이었습니다.
-- 보조 장치 `heartbeat.yml`을 만들었습니다. 동작하려면 **Settings → Environments → `heartbeat` → Wait timer 55분** 설정이 필요합니다(이 세션의 프록시는 환경 API를 막고 있어 사용자가 직접 설정). 설정한 뒤 Actions에서 heartbeat를 한 번 수동 실행하면 체인이 시작됩니다.
-- 체인이 끊겨도 `heartbeat.yml`의 6시간 cron이 다시 살립니다(GitHub cron이 동작할 경우).
-
-## 6-2. 네이버 블로그 자동화 (2026-10-24, 사용자 맥 전용)
-- **글 생성(이 저장소):** `node src/blog.mjs --out <outbox> --ledger <ledger.json>`. 하루 최대 2개를 만듭니다. ① 가격 하락 **기록**("○월 ○일 ○시 기준" 가격으로 표기)과 ② 품목 가이드(30일 안에 반복 금지)입니다. 파격 할인 글은 임시저장 동안 할인이 끝나 지난 글이 되기 쉬워 블로그에서 뺐습니다(사용자 결정, `blog.includeFlash=false`). 빠른 할인은 텔레그램이 맡습니다. `post.json`에 `blocks`(문단·굵게·링크·이미지 위치)와 미리보기 `preview.html`을 씁니다.
-- **업로드(저장소 밖):** `~/abbys/naver-blog-tool/`에 있습니다. 제3자 도구 [naver-blog-automation-shared](https://github.com/baboplater-blip/naver-blog-automation-shared)의 로컬 사본과 직접 만든 `adapter/coupang_drafts.py`로 구성됩니다. 이 도구는 **재배포 금지 라이선스**라서 공개 저장소에 올리지 않습니다.
-  - 블로그 전용 크롬(`start_blog_chrome.sh`, 포트 9222, 별도 프로필에서 네이버 로그인 유지)에 붙어 이미지를 업로드합니다.
-  - 그다음 본문을 SmartEditor 컴포넌트로 직접 구성하고(링크 노드 `{"link":{"url":..,"@ctype":"urlLink"}}`, 이미지는 업로드 순서대로 해당 상품 아래), **[저장](임시저장)** 만 누릅니다. 발행은 사용자가 직접 합니다.
-  - 블로그 ID는 `hyemihyemi33`입니다. 2026-10-25에 블로그 이름을 "로우프라이스사자 | 쿠팡 최저가 기록", 별명을 "로우프라이스사자"로 바꾸고 소개글(텔레그램·대가성 문구 포함)을 설정했습니다. 예전 소개글(부동산 문구)은 `~/abbys/naver-blog-tool/blog_info_backup.json`에 백업해 두었습니다.
-  - 카테고리 번호는 다음과 같습니다(`adapter/categories.json`). 가격 하락 기록=6, 육아=7, 자취·생필품=8, 캠핑=9, 홈카페·주방=10, 게시판=1(기존). 업로더가 `postwrite?categoryNo=`로 자동 지정합니다(발행 패널에서 선택되는 것을 확인함). 블로그 주제는 '상품리뷰'로 바꿨습니다. 프로필 사진은 사자와 가격 하락 태그 그림입니다(`brand/profile.png`, 원본 `brand/lion.svg`). 스킨(겨울 눈사람 테마)은 아직 그대로입니다. 상단 메뉴의 '서혜미'는 네이버 계정 실명이라 본인에게만 보이고 방문자에게는 보이지 않으며, 블로그 설정으로는 바꿀 수 없습니다.
-  - Codex CLI 0.164.0을 `~/.local/bin/codex`에 설치했습니다(npm 전역 폴더는 다른 맥 계정 소유라 사용자 폴더에 설치). 로그인(`codex login`)은 사용자가 직접 해야 합니다.
-  - 주의: 업로드 직후 이미지 `src`가 비어 있으므로, 채워질 때까지 기다린 뒤 본문을 구성합니다. 기다리지 않으면 "존재하지 않는 이미지"로 저장됩니다.
-  - 원본 도구의 본문 변환은 `<a>` 링크 주소를 버리고 이미지를 균등하게 흩어 놓아서 쓰지 않습니다. 원본 도구에는 macOS 패치 2건(크롬 경로, Cmd+V)을 적용했습니다.
-- **AI 글쓰기 + 품질 검사(`adapter/enrich.py`):** 로컬 Claude CLI(`~/.local/bin/claude`, 모델 sonnet)가 문장만 씁니다(서론, 상품별 코멘트, 고르는 기준, FAQ 3개, 마무리, 태그 10개).
-  - 가격과 할인율은 AI가 쓰지 않고 데이터(`post.json`의 `facts`)에서 넣습니다. 숫자·체험 위장·과장·안전 단정 표현이 나오면 거부합니다.
-  - 원본 도구의 `quality_validator`(로컬 설정에 `쿠팡상품` 규칙 추가: 1800~5500자, 표, FAQ, 소제목 3개 이상, 태그 10개), `article_quality`, `ai_tell` 검사를 거칩니다. 실패하면 1번 다시 쓰고, 그래도 미통과면 업로드 보류(`_qc.json`)합니다.
-  - 본문에 비교 표(SE ONE `table` 컴포넌트)가 들어갑니다.
-  - **사용자 요청 중 '네이버가 봇을 사람으로 보게 지연, 자동화 흔적 숨김'은 탐지 회피라서 적용하지 않았습니다.** 원본 도구의 그런 기능도 쓰지 않습니다. 예약발행(네이버 정식 기능)과 하루 1~2개 분량 제한은 허용합니다.
-- **예약발행(2026-10-25~):** `adapter/daily.py`가 계획(`plan.py` + `schedule.json`) → 글 생성(`blog.mjs --max --kinds`) → AI·품질 검사 → `coupang_drafts.py --reserve-at` 순서로 실행합니다. 예약은 원본 도구의 `_set_reservation_ex`로 하고, 카테고리·태그·시각을 넣고 확정한 뒤 검증합니다. 예약 전에 실패하면 임시저장으로 대신 보관합니다. 확정 버튼은 눌렸지만 결과가 불명확하면 중복을 막기 위해 재시도하지 않습니다.
-  - 일정 규칙(`schedule.json`): 시작 2026-10-26부터 14일 동안은 하루 1개(가이드와 가격 기록을 번갈아), 그 뒤에는 하루 2개입니다. 시간대는 12:40(가격 기록)과 21:10(가이드)이고, 글 간격은 최소 6시간입니다. **launchd가 각 발행 1시간 전(11:40, 20:10)에 실행해 앞으로 1.5시간 안의 자리만 예약하므로, 발행 시점 가격은 1~2시간 전 값입니다.** 하루 1개 기간에는 그날 글 종류에 맞는 시간대만 쓰고, 그 시간을 놓치면(맥이 잠자기 등) 그날은 건너뜁니다. 기록은 `reservations.json`에 남습니다.
-  - 첫 예약: 2026-10-26 21:10 "침낭 추천" 가이드(가격은 10월 25일 0시 기준). 에디터 상단 "예약 발행 1건"으로 확인했습니다.
-  - 사용자가 임시저장 글을 직접 발행하면 이 일정 기록에는 잡히지 않습니다(하루 개수 초과 주의).
-  - 의도적으로 넣지 않은 것: 사람인 척하는 입력 지연, 자동화 흔적 숨김, 매번 다른 브라우저 지문. 이는 탐지 회피라서 쓰지 않으며, 원본 도구의 해당 기능도 사용하지 않습니다.
-- **자동 실행:** launchd `~/Library/LaunchAgents/com.hyemi.coupang-blog.plist`가 매일 11:40과 20:10에 `run_daily.sh`를 실행합니다(git pull → `daily.py` → 맥 알림). 로그는 `~/abbys/naver-blog-tool/logs/`에 남습니다.
+| 상황 | 할 일 |
+|---|---|
+| 맥 알림 "로그인이 풀렸는지 확인" | 블로그용 크롬 창에서 네이버에 다시 로그인합니다(`~/abbys/naver-blog-tool/start_blog_chrome.sh`) |
+| 오늘 예약이 안 됨 | `logs/daily-오늘.log`와 `outbox/*/_qc.json`·`_error.json`을 봅니다. 다음 자리는 `.venv/bin/python adapter/plan.py next`로 확인합니다 |
+| 수동으로 한 번 돌리기 | `~/abbys/naver-blog-tool/run_daily.sh` (다음 1.5시간 안에 자리가 있을 때만 예약) |
+| 일정 바꾸기 | `adapter/schedule.json` (rampDays, maxPerDay, slots, maxLeadHours). 실행 시각을 바꾸면 launchd plist도 같이 고칩니다 |
+| 임시저장 모드로 되돌리기 | `schedule.json`의 `"mode": "draft"` |
+| 사이트·텔레그램 문제 | GitHub Actions 실행 기록을 봅니다. heartbeat 체인이 살아 있는지(55분 대기 중인 실행이 있는지) 확인합니다 |
 
 ## 7. 남은 할 일 (우선순위 순)
+1. **GitHub push:** `gh auth login`으로 이 맥에 GitHub 로그인 → `cd ~/abbys/coupang && git pull --rebase origin main && git push`.
+2. **첫 발행 확인 (10/26 21:10 이후):** 글이 발행됐는지, 링크가 눌리는지, 표와 이미지가 제대로 보이는지 확인합니다.
+3. **10/27 11:40 첫 자동 예약 확인:** 로그와 "예약 발행 1건" 표시를 봅니다.
+4. **Codex 로그인:** 사용자가 `codex login`을 직접 합니다(CLI 설치 완료: `~/.local/bin/codex` 0.164.0).
+5. **블로그 스킨 교체** (선택, 사용자 승인 필요).
+6. **커스텀 도메인 `lowpricesaja.com`** (사용자 결정 대기): DNS A 레코드 4개(185.199.108~111.153)와 `www` CNAME → Pages Custom domain → `baseUrl` 변경 → 검색엔진에 새 속성 등록.
+7. **방문자 통계:** Google Analytics 측정 ID를 받아 `<head>`에 넣습니다.
+8. **2주 뒤(11/9 전후) 점검:** 블로그 노출·유입, 저품질 신호 여부, 쿠팡 클릭 수. 이를 보고 하루 2개 전환 여부를 판단합니다.
 
-1. **커스텀 도메인 (사용자 결정 대기):** 후보는 `lowpricesaja.com`입니다. 사용자가 도메인을 산 뒤 할 일은 다음과 같습니다.
-   - DNS에 A 레코드 4개(185.199.108~111.153)와 `www` CNAME(→ `ely0812.github.io`)를 추가합니다.
-   - Pages → Custom domain에 입력하고, Enforce HTTPS를 켭니다.
-   - `site.config.json`의 `baseUrl`을 새 주소로 바꾸고, 구글과 네이버에 새 속성을 등록합니다(확인 태그는 `verification` 필드).
-2. **방문자 통계:** Google Analytics 측정 ID(`G-...`)를 받아 `<head>`에 넣습니다. 아직 미구현입니다.
-3. **일주일 뒤 점검:**
-   - 텔레그램 알림이 실제로 올라오는지 봅니다.
-   - `searchPausedUntil`이 생긴 적이 있는지 봅니다.
-   - 서치 콘솔과 서치어드바이저의 색인 수를 봅니다.
-   - 쿠팡 리포트의 클릭 수를 봅니다.
-4. **README 정리:** 일부 설명이 초기 버전 기준입니다.
-
-## 8. 로컬에서 이어가기
-
-```bash
-git clone https://github.com/ely0812/ely0812.github.io.git
-cd ely0812.github.io
-npm test                 # 테스트 (외부 의존성 없음, Node 20.11+)
-npm run build            # 커밋된 실제 데이터로 dist/ 생성
-npm run preview          # http://localhost:4173 미리보기
-claude                   # Claude Code 실행 → CLAUDE.md와 이 문서를 자동으로 참고
-```
-
-### 주의 (중요)
-- **로컬에서 `npm run collect`나 `npm run daily`를 돌린 뒤 `data/`를 커밋하지 마세요.**
-  - 키 없이 돌리면 샘플 데이터가 섞입니다.
-  - 키를 넣고 돌리면 검색 호출 한도를 함께 씁니다.
-  - 테스트한 뒤에는 `git checkout data`로 되돌리세요.
-- 원격 저장소에는 매시간 GitHub Actions가 `data:` 커밋을 올립니다. **push 전에 항상 `git pull --rebase origin main`을 먼저 실행하세요.**
-- `site.config.json`, `src/**`, `templates/**`를 push하면 즉시 수집과 배포가 한 번 실행됩니다. 짧은 시간에 여러 번 push하면 검색 호출이 몰립니다. 이때는 시간당 상한이 보호해 줍니다.
+## 8. 작업할 때 주의
+- `data/`는 GitHub Actions만 커밋합니다. 로컬에서 collect를 돌렸다면 `git checkout data`로 되돌립니다.
+- push 전에는 항상 `git pull --rebase origin main`을 합니다(매시간 data 커밋이 올라옵니다).
+- `site.config.json`, `src/**`, `templates/**`를 push하면 즉시 수집과 배포가 한 번 돕니다.
+- 블로그 도구 폴더(`~/abbys/naver-blog-tool/`)는 git에 넣지 않습니다(라이선스, 그리고 크롬 로그인 프로필이 들어 있음).
 
 ## 9. 사용자 정보 (작업 방식)
-- 개발자가 아닙니다. 한국어로 **쉽게, 단계별로** 설명하는 방식을 선호합니다.
-- 응답에 **결론, 신뢰도, 주의사항**을 함께 적어 달라고 요청했습니다.
-- 브라우저나 GitHub 설정 화면 조작은 사용자가 직접 합니다. Claude가 할 수 없는 단계는 클릭 경로를 링크와 함께 안내합니다.
+- 개발자가 아닙니다. 한국어로 **쉽게, 단계별로** 설명합니다. 응답에는 **결론, 신뢰도, 주의사항**을 함께 씁니다.
+- 결정할 일은 선택지로 물어보는 방식을 선호합니다. 이미 정한 일은 다시 묻지 않습니다.
+- 제약 때문에 못 하는 일은 이유를 짧게 한 번만 설명하고, 대신 할 수 있는 가장 가까운 단계까지 해 둡니다(예: 삭제 직전 화면까지 열어 두기).
