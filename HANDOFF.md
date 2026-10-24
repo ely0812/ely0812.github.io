@@ -119,7 +119,8 @@ test/core.test.mjs      node:test 4개
 - **업로드(저장소 밖):** `~/abbys/naver-blog-tool/`에 있습니다. 제3자 도구 [naver-blog-automation-shared](https://github.com/baboplater-blip/naver-blog-automation-shared)의 로컬 사본과 직접 만든 `adapter/coupang_drafts.py`로 구성됩니다. 이 도구는 **재배포 금지 라이선스**라서 공개 저장소에 올리지 않습니다.
   - 블로그 전용 크롬(`start_blog_chrome.sh`, 포트 9222, 별도 프로필에서 네이버 로그인 유지)에 붙어 이미지를 업로드합니다.
   - 그다음 본문을 SmartEditor 컴포넌트로 직접 구성하고(링크 노드 `{"link":{"url":..,"@ctype":"urlLink"}}`, 이미지는 업로드 순서대로 해당 상품 아래), **[저장](임시저장)** 만 누릅니다. 발행은 사용자가 직접 합니다.
-  - 블로그 ID는 `hyemihyemi33`입니다.
+  - 블로그 ID는 `hyemihyemi33`입니다. 2026-10-25에 블로그 이름을 "로우프라이스사자 | 쿠팡 최저가 기록", 별명을 "로우프라이스사자"로 바꾸고 소개글(텔레그램·대가성 문구 포함)을 설정했습니다. 예전 소개글(부동산 문구)은 `~/abbys/naver-blog-tool/blog_info_backup.json`에 백업해 두었습니다.
+  - 카테고리 번호는 다음과 같습니다(`adapter/categories.json`). 가격 하락 기록=6, 육아=7, 자취·생필품=8, 캠핑=9, 홈카페·주방=10, 게시판=1(기존). 업로더가 `postwrite?categoryNo=`로 자동 지정합니다(발행 패널에서 선택되는 것을 확인함). 블로그 주제는 기존 '비즈니스·경제' 그대로이고, 스킨과 프로필 사진도 바꾸지 않았습니다.
   - 주의: 업로드 직후 이미지 `src`가 비어 있으므로, 채워질 때까지 기다린 뒤 본문을 구성합니다. 기다리지 않으면 "존재하지 않는 이미지"로 저장됩니다.
   - 원본 도구의 본문 변환은 `<a>` 링크 주소를 버리고 이미지를 균등하게 흩어 놓아서 쓰지 않습니다. 원본 도구에는 macOS 패치 2건(크롬 경로, Cmd+V)을 적용했습니다.
 - **AI 글쓰기 + 품질 검사(`adapter/enrich.py`):** 로컬 Claude CLI(`~/.local/bin/claude`, 모델 sonnet)가 문장만 씁니다(서론, 상품별 코멘트, 고르는 기준, FAQ 3개, 마무리, 태그 10개).
