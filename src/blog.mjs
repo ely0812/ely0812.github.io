@@ -79,7 +79,7 @@ function productBlock(p, extra = '') {
   const lines = [
     `<h3>${esc(p.name)}</h3>`,
     `<img src="${esc(p.image)}" alt="${esc(p.name)}">`,
-    P(`${extra}<b>현재 ${won(p.price)}</b>${badges(p) ? ` · ${badges(p)}` : ''}`),
+    P(`${extra}<b>${asOf} 기준 ${won(p.price)}</b>${badges(p) ? ` · ${badges(p)}` : ''}`),
     P(`가격 기록 ${p.history.length}일 · 기록 중 최저 ${won(lowest)}${p.price <= lowest && p.history.length > 1 ? ' (기록 최저가)' : ''}`),
     P(link(p)),
   ];
