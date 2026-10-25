@@ -1,6 +1,6 @@
 # AGENTS.md
 
-쿠팡 파트너스 가격추적 사이트(https://ely0812.github.io), 텔레그램 채널(@lowprice_saja), 네이버 블로그(hyemihyemi33) 자동화 프로젝트입니다. **작업 전에 [HANDOFF.md](HANDOFF.md)를 먼저 읽으세요.** 구조, 실측한 사실, 결정, 남은 일이 정리되어 있습니다.
+쿠팡 파트너스 가격추적 사이트(https://ely0812.github.io), 텔레그램 채널(@lowprice_saja), 네이버 블로그(lowprice_saja, 예전 아이디 hyemihyemi33) 자동화 프로젝트입니다. **작업 전에 [HANDOFF.md](HANDOFF.md)를 먼저 읽으세요.** 구조, 실측한 사실, 결정, 남은 일이 정리되어 있습니다.
 
 ## 명령
 - `npm test`: node:test (의존성 없음)
