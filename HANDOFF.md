@@ -13,7 +13,8 @@
 | 구글·네이버 검색 등록 | ✅ 사이트맵·RSS 제출 완료 | — |
 
 **바로 확인할 것**
-- 2026-10-26: 미리 만들어 둔 침낭 가이드 예약 글(가격이 45시간 전 값)은 사용자가 삭제했고, `reservations.json`에서도 뺐습니다(백업 `reservations.backup-20261026.json`). 같은 날 가이드 시간대를 08:10으로 옮겼습니다. **첫 글은 10/26 07:10 자동 실행이 새 가격으로 만들어 08:10에 발행**합니다(침낭은 `ledger.json` 30일 반복 금지라 다른 가이드).
+- 2026-10-26: 미리 만들어 둔 침낭 가이드 예약 글(가격이 45시간 전 값)은 사용자가 삭제했고, `reservations.json`에서도 뺐습니다(백업 `reservations.backup-20261026.json`). 같은 날 가이드 시간대를 08:10으로 옮겼습니다. 그런데 10/26 07:10 실행은 글을 만들지 않았습니다. 지운 침낭 글이 `ledger.json`에 '10/26에 만든 글'로 남아 있어 하루 개수가 찬 것으로 계산됐기 때문입니다. 그 기록을 지웠습니다(백업 `ledger.backup-20261026.json`). **예약 글을 지울 때는 `reservations.json`과 `ledger.json` 둘 다에서 빼야 합니다.**
+- 2026-10-26: '가전·디지털' 분야를 추가했습니다(섹션 `digital`, 쿠팡 카테고리 1016, 가이드 20개: 디지털 기기·액세서리·생활가전). 블로그 카테고리 '가전·디지털'(번호 11)을 만들고 `categories.json`에 연결했으며, 글쓰기 화면에서 선택되는 것까지 확인했습니다. `collect.mjs`는 이제 한 번도 검색하지 않은 가이드를 먼저 검색하므로, 새 가이드는 몇 시간 안에 채워집니다.
 - 2026-10-26: 네이버 블로그 아이디가 `hyemihyemi33` → `lowprice_saja`로 바뀌어 있었습니다(예전 주소는 새 주소로 연결됨). `coupang_drafts.py`·`leave.py`의 `BLOG_ID`를 고쳤습니다. 같은 날 블로그용 크롬의 네이버 로그인이 풀려 있어 사용자가 다시 로그인했습니다.
 - 발행된 뒤 쿠팡 링크가 실제로 눌리는지 확인해야 합니다. 에디터에서는 `se-link` 노드로 저장되는 것까지 확인했습니다.
 - ~~이 맥의 커밋이 GitHub에 push되지 않음~~ → **2026-10-25 완료.** 이 맥에 `gh auth login`(ely0812)을 하고 밀린 커밋 11개를 push했습니다. 로컬 저장소 주소도 새 이름(`ely0812.github.io.git`)으로 바꿨습니다.
@@ -38,9 +39,9 @@
 
 ### 파일
 ```
-site.config.json        사이트 이름, 섹션, 카테고리, 가이드 45개, 한도, 텔레그램, 검색엔진 확인 태그
+site.config.json        사이트 이름, 섹션, 카테고리, 가이드 65개, 한도, 텔레그램, 검색엔진 확인 태그
 src/coupang.mjs         API 클라이언트 (HMAC, CEA 헤더). optionId() = vendorItemId 단위 추적
-src/collect.mjs         수집 → data/products.json, data/state.json (검색 시간당 상한·403/429 시 1시간 중지)
+src/collect.mjs         수집 → data/products.json, data/state.json (검색 시간당 상한·403/429 시 1시간 중지, 새 가이드 우선 검색)
 src/build.mjs           data → dist/ 정적 HTML
 src/deals.mjs           priceDrops(): 전날 대비 하락률, recordLow(이력 7일 이상)
 src/telegram.mjs        아침 요약, 하락 알림(단계별 머리말), 특가 종료 알림, --test
@@ -53,7 +54,7 @@ test/core.test.mjs      node:test 4개
 ```
 
 ### 사이트 구성
-- 4개 섹션: 육아, 자취·생필품, 캠핑, 홈카페·주방. 가이드 45개, 베스트 카테고리 7개.
+- 5개 섹션: 육아, 자취·생필품, 캠핑, 홈카페·주방, 가전·디지털. 가이드 65개, 베스트 카테고리 8개.
 - **검색엔진에 제출한 경로는 바꾸지 마세요:** `/`, `/deals/`, `/goldbox/`, `/topic/<section>/`, `/best/<slug>/`, `/guide/<slug>/`
 - 상품이 없는 페이지는 만들지 않습니다.
 
@@ -105,7 +106,7 @@ adapter/plan.py           발행 일정 계산 (plan.py next 로 다음 자리 �
 adapter/schedule.json     일정 규칙
 adapter/enrich.py         AI 문장 + 품질 검사 (원본 도구 quality_validator·article_quality·ai_tell 사용)
 adapter/coupang_drafts.py 네이버 업로드 (예약 또는 임시저장)
-adapter/categories.json   카테고리 번호: 가격 하락 기록=6, 육아=7, 자취·생필품=8, 캠핑=9, 홈카페·주방=10
+adapter/categories.json   카테고리 번호: 가격 하락 기록=6, 육아=7, 자취·생필품=8, 캠핑=9, 홈카페·주방=10, 가전·디지털=11
 outbox/<날짜-종류-slug>/  글 폴더: post.json, post.md, preview.html, _qc.json, _result.json/_error.json
 ledger.json               생성한 글 기록 (가이드 30일 반복 금지)
 reservations.json         예약 기록 (하루 개수 계산)
@@ -152,7 +153,7 @@ run_daily.sh, start_blog_chrome.sh
 | 사이트·텔레그램 문제 | GitHub Actions 실행 기록을 봅니다. heartbeat 체인이 살아 있는지(55분 대기 중인 실행이 있는지) 확인합니다 |
 
 ## 7. 남은 할 일 (우선순위 순)
-1. **첫 발행 확인 (10/26 08:10 이후):** 07:10 자동 실행 로그(`logs/daily-20261026.log`)와 맥 알림을 보고, 글이 발행됐는지, 카테고리가 맞는지, 링크가 눌리는지, 표와 이미지가 제대로 보이는지 확인합니다.
+1. **첫 발행 확인:** 10/26에는 발행되지 않았습니다(위 0절). 다음 자동 발행은 10/27 12:40 가격 기록입니다. 그날 로그(`logs/daily-YYYYMMDD.log`)와 맥 알림을 보고, 글이 발행됐는지, 카테고리가 맞는지, 링크가 눌리는지, 표와 이미지가 제대로 보이는지 확인합니다.
 2. **10/27 11:40 가격 기록 자동 예약 확인:** 로그와 "예약 발행 1건" 표시를 봅니다.
 3. **Codex 로그인:** 사용자가 `codex login`을 직접 합니다(CLI 설치 완료: `~/.local/bin/codex` 0.164.0).
 4. **블로그 스킨 교체** (선택, 사용자 승인 필요).
