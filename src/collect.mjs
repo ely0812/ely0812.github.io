@@ -92,13 +92,19 @@ const budget = Math.min(config.limits.searchPerRun, (config.limits.maxSearchPerH
 if (state.searchPausedUntil && now < Date.parse(state.searchPausedUntil)) {
   console.log(`⏸ 검색 API 일시 중지 중 (${state.searchPausedUntil}까지)`);
 } else {
+  // Guides never searched yet (just added to the config) go first so their pages fill
+  // within a run or two instead of waiting for the full rotation.
+  const fresh = g.filter((x) => !(`guide:${x.slug}` in lists));
   let done = 0;
+  let rotated = 0;
   for (; done < budget; done++) {
-    const guide = g[(state.guideCursor + done) % g.length];
+    const guide = done < fresh.length ? fresh[done] : g[(state.guideCursor + rotated++) % g.length];
+    const key = `guide:${guide.slug}`;
     state.searchLog.push(new Date().toISOString());
     try {
       const found = await api.search(guide.keyword, n);
-      if (found.length) lists[`guide:${guide.slug}`] = upsert(found).slice(0, n);
+      if (found.length) lists[key] = upsert(found).slice(0, n);
+      else lists[key] ??= []; // searched, nothing found: don't keep jumping the queue
     } catch (e) {
       console.warn(`⚠ search "${guide.keyword}" 실패: ${e.message}`);
       if (e.status === 403 || e.status === 429) {
@@ -108,7 +114,7 @@ if (state.searchPausedUntil && now < Date.parse(state.searchPausedUntil)) {
       }
     }
   }
-  state.guideCursor = (state.guideCursor + done) % Math.max(g.length, 1);
+  state.guideCursor = (state.guideCursor + rotated) % Math.max(g.length, 1);
   console.log(`🔎 검색 ${done}회 (최근 1시간 ${state.searchLog.length}회 / 상한 ${config.limits.maxSearchPerHour ?? 10})`);
 }
 state.updatedAt = new Date().toISOString();
