@@ -46,6 +46,15 @@ const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '
 const won = (n) => `${Number(n).toLocaleString('ko-KR')}원`;
 const list = (key) => (state.lists[key] ?? []).map((id) => products[id]).filter(Boolean);
 const low = (p) => Math.min(...p.history.map((h) => h.price));
+// "Usual" price = median of earlier recorded days (needs 3+). A guide item counts as on sale
+// when it is at least 5% below that, so a one-day spike can't fake a discount.
+function usual(p) {
+  const prev = p.history.slice(0, -1).map((h) => h.price).sort((a, b) => a - b);
+  if (prev.length < 3) return null;
+  const u = prev[prev.length >> 1];
+  const percent = Math.round(((u - p.price) / u) * 100);
+  return percent >= 5 ? { price: u, percent } : null;
+}
 
 let ledger = { posts: [] };
 try { ledger = JSON.parse(await fs.readFile(LEDGER, 'utf8')); } catch {}
@@ -68,12 +77,12 @@ const badges = (p) => [p.rocket && '🚀 로켓배송', p.freeShipping && '무�
 //   { t: 'p', runs: [{ text, bold?, url? }] }  |  { t: 'h', text }  |  { t: 'img', src }
 const T = (text, o = {}) => ({ text, ...o });
 const para = (...runs) => ({ t: 'p', runs });
-function productBlocks(p, before, label = '현재') {
+function productBlocks(p, before, label = '현재', beforeLabel = '') {
   const lowest = low(p);
   return [
     { t: 'h', text: p.name },
     { t: 'img', src: p.image },
-    para(T(before ? `${won(before)} → ` : ''), T(`${label} ${won(p.price)}`, { bold: true }), T(badges(p) ? ` · ${badges(p)}` : '')),
+    para(T(before ? `${beforeLabel}${won(before)} → ` : ''), T(`${label} ${won(p.price)}`, { bold: true }), T(badges(p) ? ` · ${badges(p)}` : '')),
     para(T(`가격 기록 ${p.history.length}일 · 기록 중 최저 ${won(lowest)}${p.price <= lowest && p.history.length > 1 ? ' (기록 최저가)' : ''}`)),
     para(T('👉 쿠팡에서 가격 확인하기', { bold: true, url: p.url })),
   ];
@@ -95,6 +104,7 @@ function productBlock(p, extra = '') {
 const fact = (p, before) => ({
   id: p.id, name: p.name, price: p.price, before: before ?? null,
   percent: before ? Math.round(((before - p.price) / before) * 100) : null,
+  usual: usual(p)?.price ?? null, usualPercent: usual(p)?.percent ?? null,
   lowest: low(p), days: p.history.length, rocket: p.rocket, freeShipping: p.freeShipping,
   section: sectionName[sectionOf[p.id]] ?? '', url: p.url, image: p.image,
 });
@@ -127,7 +137,7 @@ function wrap(title, intro, blocks, outro, tags, images, structured = []) {
 }
 
 // ---- post types ----
-const drops = priceDrops(products, { minDropPercent: 5, limit: 200 });
+const drops = priceDrops(products, { minDropPercent: 10, limit: 200 });
 
 function roundup() {
   const top = drops.slice(0, blog.roundupSize);
@@ -176,9 +186,17 @@ function guide() {
   const recent = new Set(ledger.posts.filter((x) => x.kind === 'guide' && daysAgo(x.date) < blog.guideRepeatDays).map((x) => x.guide));
   const candidates = config.guides.filter((g) => !recent.has(g.slug) && list(`guide:${g.slug}`).length >= 3);
   if (!candidates.length) return null;
-  // Rotate deterministically by day so consecutive days cover different guides.
-  const g = candidates[Math.floor(Date.parse(today) / 864e5) % candidates.length];
-  const items = list(`guide:${g.slug}`).slice(0, 5);
+  // Prefer the guide with the most items on sale; rotate by day among ties (or when none are).
+  const onSale = (g) => list(`guide:${g.slug}`).filter(usual).length;
+  const most = Math.max(...candidates.map(onSale));
+  const pool = candidates.filter((g) => onSale(g) === most);
+  const g = pool[Math.floor(Date.parse(today) / 864e5) % pool.length];
+  // On-sale items first (biggest discount first), then the rest in search order.
+  const all = list(`guide:${g.slug}`);
+  const sale = all.filter(usual).sort((a, b) => usual(b).percent - usual(a).percent);
+  // One option per product: color/size variants of the same item would waste slots.
+  const seen = new Set();
+  const items = [...sale, ...all.filter((p) => !usual(p))].filter((p) => !seen.has(p.productId ?? p.id) && seen.add(p.productId ?? p.id)).slice(0, 5);
   const atLow = items.filter((p) => p.history.length > 1 && p.price <= low(p) * 1.03).length;
   const kw = g.keyword.replace(/\s/g, '');
   const subject = g.title.replace(/\s*(추천|최저가)$/, '');
@@ -195,12 +213,12 @@ function guide() {
     facts: { asOf, guide: { title: g.title, keyword: g.keyword, intro: g.intro, section: sectionName[g.section] ?? '' }, products: items.map((p) => fact(p)) },
     ...wrap(
       title,
-      `${g.intro} 아래는 ${asOf} 기준 쿠팡 검색 상위 상품의 가격과 기록상 최저가예요.${atLow ? ` 이 중 ${atLow}개는 그 시각 기준 기록 최저가 근처였습니다.` : ''} 가격은 수시로 바뀌니 링크에서 현재 가격을 확인하세요.`,
-      items.map((p, i) => `<h2>${i + 1}. ${esc(p.name.slice(0, 30))}</h2>\n${productBlock(p)}`),
+      `${g.intro} 아래는 ${asOf} 기준 쿠팡 검색 상위 상품의 가격과 기록상 최저가예요.${sale.length ? ` 평소 기록 가격보다 5% 이상 싼 상품 ${Math.min(sale.length, 5)}개를 앞에 두었어요.` : ''}${atLow ? ` 이 중 ${atLow}개는 그 시각 기준 기록 최저가 근처였습니다.` : ''} 가격은 수시로 바뀌니 링크에서 현재 가격을 확인하세요.`,
+      items.map((p, i) => `<h2>${i + 1}. ${esc(p.name.slice(0, 30))}${usual(p) ? ` · 평소보다 -${usual(p).percent}%` : ''}</h2>\n${productBlock(p, usual(p) ? `평소 ${won(usual(p).price)} → ` : '')}`),
       '가격이 자주 바뀌는 품목이라, 기록 최저가 근처일 때 사면 가장 이득이에요.',
       [kw, `${kw}추천`, `${kw}최저가`, '쿠팡추천', `${(sectionName[g.section] ?? '').replace(/·/g, '')}추천`, ...brandTags],
       items.map((p) => p.image),
-      items.flatMap((p, i) => [{ t: 'h', text: `${i + 1}. ${p.name.slice(0, 30)}` }, ...productBlocks(p, null, `${asOf} 기준`)]),
+      items.flatMap((p, i) => [{ t: 'h', text: `${i + 1}. ${p.name.slice(0, 30)}${usual(p) ? ` · 평소보다 -${usual(p).percent}%` : ''}` }, ...productBlocks(p, usual(p)?.price, `${asOf} 기준`, '평소 ')]),
     ),
   };
 }

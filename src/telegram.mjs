@@ -61,7 +61,7 @@ if (config.telegram.morningDigest && state.digestDate !== today0 && kstHour >= (
 const posted = new Set(state.telegramPosted ?? []);
 const today = new Date(Date.now() + 9 * 36e5).toISOString().slice(0, 10); // KST date
 const drops = priceDrops(products, { minDropPercent: 3, limit: 100 })
-  .filter((d) => d.percent >= config.telegram.minDropPercent || d.recordLow)
+  .filter((d) => d.percent >= config.telegram.minDropPercent)
   .filter((d) => !posted.has(`${d.product.id}:${today}`))
   .slice(0, config.telegram.maxPostsPerRun);
 

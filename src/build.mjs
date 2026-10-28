@@ -117,7 +117,7 @@ const tgCta = (variant) => (tg ? `<a class="tg tg-${variant}" href="https://t.me
 const pages = [];
 const add = (p) => pages.push(p);
 
-const drops = priceDrops(products, { minDropPercent: 3, limit: 30 });
+const drops = priceDrops(products, { minDropPercent: config.telegram?.minDropPercent ?? 10, limit: 30 });
 const dropTag = (p) => {
   const d = drops.find((x) => x.product.id === p.id);
   return d ? `<s>${won(d.before)}</s> <em>-${d.percent}%</em>` : '';
