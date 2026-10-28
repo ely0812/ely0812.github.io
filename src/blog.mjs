@@ -9,6 +9,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { priceDrops } from './deals.mjs';
+import { brandsOf, guideTitle } from './titles.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const read = async (f) => JSON.parse(await fs.readFile(path.join(ROOT, f), 'utf8'));
@@ -179,17 +180,25 @@ function guide() {
   const g = candidates[Math.floor(Date.parse(today) / 864e5) % candidates.length];
   const items = list(`guide:${g.slug}`).slice(0, 5);
   const atLow = items.filter((p) => p.history.length > 1 && p.price <= low(p) * 1.03).length;
+  const kw = g.keyword.replace(/\s/g, '');
+  const subject = g.title.replace(/\s*(추천|최저가)$/, '');
+  const brands = brandsOf(items, [g.keyword, subject], Object.values(products).map((p) => p.name));
+  // Next pattern after the last guide post, so consecutive guides never share a title shape.
+  const style = ledger.posts.filter((x) => x.kind === 'guide').length;
+  const title = guideTitle({ subject, brands, prices: items.map((p) => p.price), month: mm, style });
+  const brandTags = brands.slice(0, 3).map((b) => `${b}${kw}`);
   return {
     kind: 'guide',
     key: `guide:${g.slug}:${today}`,
     guide: g.slug,
+    brandTags,
     facts: { asOf, guide: { title: g.title, keyword: g.keyword, intro: g.intro, section: sectionName[g.section] ?? '' }, products: items.map((p) => fact(p)) },
     ...wrap(
-      `${g.title} (${mm}월 가격 비교) | 살 만한 ${items.length}개와 가격 기록`,
+      title,
       `${g.intro} 아래는 ${asOf} 기준 쿠팡 검색 상위 상품의 가격과 기록상 최저가예요.${atLow ? ` 이 중 ${atLow}개는 그 시각 기준 기록 최저가 근처였습니다.` : ''} 가격은 수시로 바뀌니 링크에서 현재 가격을 확인하세요.`,
       items.map((p, i) => `<h2>${i + 1}. ${esc(p.name.slice(0, 30))}</h2>\n${productBlock(p)}`),
       '가격이 자주 바뀌는 품목이라, 기록 최저가 근처일 때 사면 가장 이득이에요.',
-      [g.keyword.replace(/\s/g, ''), `${g.keyword.replace(/\s/g, '')}추천`, `${g.keyword.replace(/\s/g, '')}최저가`, '쿠팡추천', `${(sectionName[g.section] ?? '').replace(/·/g, '')}추천`],
+      [kw, `${kw}추천`, `${kw}최저가`, '쿠팡추천', `${(sectionName[g.section] ?? '').replace(/·/g, '')}추천`, ...brandTags],
       items.map((p) => p.image),
       items.flatMap((p, i) => [{ t: 'h', text: `${i + 1}. ${p.name.slice(0, 30)}` }, ...productBlocks(p, null, `${asOf} 기준`)]),
     ),

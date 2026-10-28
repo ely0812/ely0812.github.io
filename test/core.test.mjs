@@ -40,3 +40,17 @@ test('priceDrops flags record lows only with 7+ days of history', () => {
   assert.deepEqual(byId, { long: true, short: false });
 });
 
+
+test('guide titles use real brands/prices and rotate three patterns', async () => {
+  const { brandsOf, guideTitle } = await import('../src/titles.mjs');
+  const items = [{ name: '탁상용 거치대' }, { name: '[50w 출력] 비파노 스피커' }, { name: 'NINJA 1' }, { name: 'ninja 2' }, { name: '최신형 리빙웰 30L 에어프라이어' }, { name: '닌자 크리스피 3.8L' }, { name: '[특가] 닌자 올인원' }, { name: '에어프라이어 대용량' }];
+  assert.deepEqual(brandsOf(items, ['에어프라이어']), ['비파노', 'NINJA', '리빙웰', '닌자']);
+  assert.deepEqual(brandsOf([{ name: '핸드폰 거치대' }, { name: '거치대 모센모' }], ['휴대폰 거치대']), []);
+  assert.deepEqual(brandsOf([{ name: '자외선 타프' }], [], ['A 자외선 차단', 'B 자외선 코팅']), []);
+  const t = (style, brands, prices = [149000, 260000]) => guideTitle({ subject: '에어프라이어', brands, prices, month: 10, style });
+  assert.equal(t(0, ['닌자', '리빙웰']), '에어프라이어 가격 비교 | 닌자·리빙웰 2개, 149,000원부터');
+  assert.equal(t(1, ['닌자', '리빙웰']), '10월 에어프라이어 최저가 정리: 닌자 vs 리빙웰 (149,000원~260,000원)');
+  assert.equal(t(2, ['닌자', '리빙웰']), '에어프라이어 고르기 전 가격 기록 확인 (닌자·리빙웰 등 2개)');
+  assert.equal(t(3, ['하기스']), '에어프라이어 가격 비교 | 하기스 2종, 149,000원부터');
+  assert.equal(t(1, [], [5000, 5000]), '10월 에어프라이어 최저가 정리 (5,000원)');
+});
