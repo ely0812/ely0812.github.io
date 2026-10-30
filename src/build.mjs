@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { priceDrops } from './deals.mjs';
 import { crumbHtml, guideDescription, jsonLdScript, lastChanged, pageGraph } from './seo.mjs';
+import { asOfKo, priceStats, sparkline } from './history.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DIST = path.join(ROOT, 'dist');
@@ -28,25 +29,26 @@ const root = new URL(base).pathname.replace(/\/$/, '');
 const href = (p) => `${root}${p}`;
 const sectionName = Object.fromEntries(sections.map((sec) => [sec.slug, sec.name]));
 
-function sparkline(history) {
-  if (history.length < 2) return '';
-  const prices = history.map((h) => h.price);
-  const min = Math.min(...prices), max = Math.max(...prices), w = 96, h = 24;
-  const pts = prices.map((p, i) => `${((i / (prices.length - 1)) * w).toFixed(1)},${(max === min ? h / 2 : h - ((p - min) / (max - min)) * h).toFixed(1)}`);
-  return `<svg class="spark" viewBox="-2 -2 ${w + 4} ${h + 4}" width="${w}" height="${h}" role="img" aria-label="최근 ${prices.length}일 가격 추이"><polyline points="${pts.join(' ')}"/></svg>`;
-}
-
 function card(p, extra = '') {
-  const prices = p.history.map((h) => h.price);
-  const low = Math.min(...prices);
-  const badges = [p.rocket && '<span class="b rocket">로켓배송</span>', p.freeShipping && '<span class="b">무료배송</span>', p.price <= low && prices.length > 1 && '<span class="b low">기록 최저가</span>'].filter(Boolean).join('');
+  const st = priceStats(p);
+  const badges = [
+    p.rocket && '<span class="b rocket">로켓배송</span>',
+    p.freeShipping && '<span class="b">무료배송</span>',
+    st.recordLow && '<span class="b low">역대 최저가</span>',
+    // Drop cards already show a percent (vs the previous record), so a second one is left out.
+    !extra && st.belowUsual && `<span class="b sale">평소보다 -${st.usualPercent}%</span>`,
+  ].filter(Boolean).join('');
+  // Every claim names its basis: how many days were recorded, and the usual price when it is used.
+  const record = st.recordLow ? `기록 ${st.days}일 중 최저` : `기록 ${st.days}일 · 최저 ${won(st.low)}`;
   return `<li class="card">
   <a href="${esc(p.url)}" target="_blank" rel="sponsored nofollow noopener"><img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy" width="200" height="200"></a>
   <div class="body">
     <h3><a href="${esc(p.url)}" target="_blank" rel="sponsored nofollow noopener">${esc(p.name)}</a></h3>
     <div class="badges">${badges}</div>
     <p class="price">${won(p.price)} ${extra}</p>
-    <div class="meta">${sparkline(p.history)}<span>${prices.length}일 기록 · 최저 ${won(low)}</span></div>
+    <p class="asof">${p.seenAt ? `<time datetime="${esc(p.seenAt.slice(0, 16))}Z">${asOfKo(p.seenAt)}</time>` : asOfKo(null, p.lastSeen)}</p>
+    ${sparkline(p.history, { usual: st.belowUsual ? st.usual : null, recordLow: st.recordLow })}
+    <p class="meta">${record}${st.belowUsual ? ` · 평소 ${won(st.usual)}` : ''}</p>
     <a class="btn" href="${esc(p.url)}" target="_blank" rel="sponsored nofollow noopener">쿠팡에서 보기</a>
   </div>
 </li>`;
