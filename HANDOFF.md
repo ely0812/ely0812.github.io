@@ -44,11 +44,13 @@ src/coupang.mjs         API 클라이언트 (HMAC, CEA 헤더). optionId() = ven
 src/collect.mjs         수집 → data/products.json, data/state.json (검색 시간당 상한·403/429 시 1시간 중지, 새 가이드 우선 검색)
 src/merge.mjs           수집 결과를 상품 기록에 합침. 같은 실행에서 골드박스·베스트가 정한 가격은 검색 결과가 덮어쓰지 않음
 src/build.mjs           data → dist/ 정적 HTML
+src/seo.mjs             SEO 도우미: JSON-LD(페이지·브레드크럼·상품 목록·FAQ), 브레드크럼 HTML, sitemap lastmod, 가이드 설명문
 src/deals.mjs           priceDrops(): 전날 대비 하락률, recordLow(이력 7일 이상)
 src/telegram.mjs        아침 요약, 하락 알림(단계별 머리말), 특가 종료 알림, --test
 src/blog.mjs            블로그 글 패키지 생성(아래 3절)
 src/check.mjs           API 키·접속 점검
 test/core.test.mjs      node:test 6개
+test/seo.test.mjs       SEO 도우미 테스트 7개
 .github/workflows/daily.yml      매시 13분 + 설정·코드 push 때: collect → build → notify → data 커밋 → Pages 배포
 .github/workflows/heartbeat.yml  'heartbeat' 환경 대기 타이머(55분)로 daily를 매시간 재실행하는 보조 장치
 .github/workflows/check.yml      수동: API 점검 + 텔레그램 테스트
