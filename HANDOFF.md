@@ -42,12 +42,13 @@
 site.config.json        사이트 이름, 섹션, 카테고리, 가이드 65개, 한도, 텔레그램, 검색엔진 확인 태그
 src/coupang.mjs         API 클라이언트 (HMAC, CEA 헤더). optionId() = vendorItemId 단위 추적
 src/collect.mjs         수집 → data/products.json, data/state.json (검색 시간당 상한·403/429 시 1시간 중지, 새 가이드 우선 검색)
+src/merge.mjs           수집 결과를 상품 기록에 합침. 같은 실행에서 골드박스·베스트가 정한 가격은 검색 결과가 덮어쓰지 않음
 src/build.mjs           data → dist/ 정적 HTML
 src/deals.mjs           priceDrops(): 전날 대비 하락률, recordLow(이력 7일 이상)
 src/telegram.mjs        아침 요약, 하락 알림(단계별 머리말), 특가 종료 알림, --test
 src/blog.mjs            블로그 글 패키지 생성(아래 3절)
 src/check.mjs           API 키·접속 점검
-test/core.test.mjs      node:test 4개
+test/core.test.mjs      node:test 6개
 .github/workflows/daily.yml      매시 13분 + 설정·코드 push 때: collect → build → notify → data 커밋 → Pages 배포
 .github/workflows/heartbeat.yml  'heartbeat' 환경 대기 타이머(55분)로 daily를 매시간 재실행하는 보조 장치
 .github/workflows/check.yml      수동: API 점검 + 텔레그램 테스트
@@ -149,6 +150,8 @@ run_daily.sh, start_blog_chrome.sh
   - 텔레그램: "기록 최저가면 10% 미만이어도 게시"하던 예외를 없앴습니다. 이제 10% 이상만 올립니다.
   - 가이드 글: 평소 가격보다 5% 이상 싼 상품을 앞에 두고 "평소 X원 → Y원 (-Z%)"로 표시합니다. 평소 가격은 이전 기록일(3일 이상)의 중앙값이라 하루 반짝 오른 가격으로 할인율을 부풀리지 않습니다. 할인 상품이 많은 품목을 먼저 고르고, 같은 상품의 색상 옵션은 하나만 넣습니다.
   - 한계: 쿠팡 API는 쿠팡이 표시하는 정가·할인율을 주지 않습니다(`discountRate` 0건). 그래서 할인율은 모두 우리 가격 기록 기준이고, 기록이 쌓일수록 정확해집니다.
+- **가격 출처 하나로 (2026-10-30):** 같은 상품이라도 검색 API 가격이 골드박스·베스트 가격과 자주 다르고(868번 중 215번), 다음 시간에 원래대로 돌아갑니다. 이 때문에 가짜 10% 하락과 텔레그램 알림이 생겼습니다(`reports/price-analysis-2026-10.md`). 그래서 한 실행 안에서는 골드박스·베스트가 먼저 정한 가격을 검색 결과가 덮어쓰지 않습니다(`src/merge.mjs`). 상품은 가이드 목록에 그대로 들어갑니다.
+- **고장 난 가이드 검색어 (2026-10-30):** 주소(slug)는 그대로 두고 검색어만 바꿨습니다. `pants-diapers` '팬티기저귀' → '팬티형 기저귀'(결과에 기저귀 0개, 생수·이용권 등), `baby-thermometer` '아기 체온계' → '체온계'(148개 중 체온계 1개), `diapers` '기저귀' → '밴드형 기저귀'(제목과 맞춤, 하기스만 나와 실제 5종). 쿠팡 API로 미리 시험해 보지는 못했으므로, 배포 몇 시간 뒤 `node reports/analysis/analyze.mjs`의 12절로 확인합니다.
 - **Claude가 하지 않은 것(경계):**
   - 네이버 봇 탐지를 속이는 기능은 넣지 않았습니다(사람인 척하는 입력 지연, 자동화 흔적 숨김, 브라우저 지문 바꾸기). 원본 도구의 해당 기능도 켜지 않았습니다. 사용자는 이에 동의하지 않았고 Codex로 하겠다고 했습니다.
   - 되돌릴 수 없는 삭제(임시저장·예약 글 삭제)는 사용자가 직접 했습니다.
