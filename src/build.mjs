@@ -35,7 +35,8 @@ function card(p, extra = '') {
     p.rocket && '<span class="b rocket">로켓배송</span>',
     p.freeShipping && '<span class="b">무료배송</span>',
     st.recordLow && '<span class="b low">역대 최저가</span>',
-    st.belowUsual && `<span class="b sale">평소보다 -${st.usualPercent}%</span>`,
+    // Drop cards already show a percent (vs the previous record), so a second one is left out.
+    !extra && st.belowUsual && `<span class="b sale">평소보다 -${st.usualPercent}%</span>`,
   ].filter(Boolean).join('');
   // Every claim names its basis: how many days were recorded, and the usual price when it is used.
   const record = st.recordLow ? `기록 ${st.days}일 중 최저` : `기록 ${st.days}일 · 최저 ${won(st.low)}`;
