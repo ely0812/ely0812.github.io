@@ -2,7 +2,8 @@
 // merges them into data/products.json with a per-day price history.
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { createClient, normalize, optionId } from './coupang.mjs';
+import { createClient, optionId } from './coupang.mjs';
+import { createUpsert } from './merge.mjs';
 import { mockClient } from './mock.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
@@ -52,15 +53,7 @@ const cutoff = new Date(Date.now() - 90 * 864e5).toISOString().slice(0, 10);
 products = Object.fromEntries(Object.entries(products).filter(([, p]) => p.lastSeen >= cutoff));
 const n = config.limits.productsPerList;
 
-function upsert(list) {
-  return list.map(normalize).filter((p) => p.id && p.url).map((p) => {
-    const prev = products[p.id] ?? { history: [] };
-    const history = prev.history.filter((h) => h.date !== today);
-    history.push({ date: today, price: p.price });
-    products[p.id] = { ...prev, ...p, history: history.slice(-90), lastSeen: today };
-    return p.id;
-  });
-}
+const upsert = createUpsert(products, today);
 
 async function safe(label, fn) {
   try { return await fn(); }
@@ -103,7 +96,7 @@ if (state.searchPausedUntil && now < Date.parse(state.searchPausedUntil)) {
     state.searchLog.push(new Date().toISOString());
     try {
       const found = await api.search(guide.keyword, n);
-      if (found.length) lists[key] = upsert(found).slice(0, n);
+      if (found.length) lists[key] = upsert(found, { source: 'search' }).slice(0, n);
       else lists[key] ??= []; // searched, nothing found: don't keep jumping the queue
     } catch (e) {
       console.warn(`⚠ search "${guide.keyword}" 실패: ${e.message}`);

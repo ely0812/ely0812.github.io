@@ -54,3 +54,18 @@ test('guide titles use real brands/prices and rotate three patterns', async () =
   assert.equal(t(3, ['하기스']), '에어프라이어 가격 비교 | 하기스 2종, 149,000원부터');
   assert.equal(t(1, [], [5000, 5000]), '10월 에어프라이어 최저가 정리 (5,000원)');
 });
+
+test('search results do not overwrite a goldbox/best price set in the same run', async () => {
+  const { createUpsert } = await import('../src/merge.mjs');
+  const item = (id, price, name = 'x') => ({ productId: id, productName: name, productPrice: price, productUrl: `https://link.coupang.com/re/AFFSDP?vendorItemId=${id}` });
+  const products = { 1: { id: '1', price: 1000, lastSeen: '2026-01-01', history: [{ date: '2026-01-01', price: 1000 }] } };
+  const upsert = createUpsert(products, '2026-01-02');
+  assert.deepEqual(upsert([item(1, 1000, 'best')]), ['1']);
+  assert.deepEqual(upsert([item(1, 800, 'search'), item(2, 500)], { source: 'search' }), ['1', '2']);
+  assert.deepEqual([products[1].price, products[1].name, products[1].history.at(-1).price], [1000, 'best', 1000]);
+  assert.equal(products[2].price, 500); // search-only items are still priced from search
+  upsert([item(2, 600)]); // a later list result replaces a search price
+  assert.equal(products[2].price, 600);
+  createUpsert(products, '2026-01-03')([item(1, 900)], { source: 'search' }); // next run, search only
+  assert.deepEqual(products[1].history.map((h) => h.price), [1000, 1000, 900]);
+});
