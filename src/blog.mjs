@@ -10,6 +10,7 @@ import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { priceDrops } from './deals.mjs';
 import { brandsOf, guideTitle } from './titles.mjs';
+import { onTopicLists } from './guides.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const read = async (f) => JSON.parse(await fs.readFile(path.join(ROOT, f), 'utf8'));
@@ -31,6 +32,7 @@ const LEDGER = path.resolve(args.ledger ?? path.join(OUT, 'ledger.json'));
 const config = await read('site.config.json');
 const products = await read('data/products.json');
 const state = await read('data/state.json');
+state.lists = onTopicLists(state.lists, products, config.guides);
 const base = config.baseUrl.replace(/\/$/, '');
 const today = args.date ?? new Date(Date.now() + 9 * 36e5).toISOString().slice(0, 10);
 const [, mm, dd] = today.split('-').map(Number);
