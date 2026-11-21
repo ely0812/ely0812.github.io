@@ -9,7 +9,8 @@ function rand(seed) {
   return next;
 }
 
-function make(prefix, count, seed, category = '') {
+// `label` names every item after the search keyword, so guide pages pass their `match` filter.
+function make(prefix, count, seed, category = '', label = '') {
   const day = Math.floor(Date.now() / 864e5);
   return Array.from({ length: count }, (_, i) => {
     const r = rand(seed * 1000 + i);
@@ -18,7 +19,7 @@ function make(prefix, count, seed, category = '') {
     const id = `${prefix}${seed}${i}`;
     return {
       productId: id,
-      productName: `[샘플] ${NAMES[(seed + i) % NAMES.length]} ${i + 1}호`,
+      productName: `[샘플] ${label || NAMES[(seed + i) % NAMES.length]} ${i + 1}호`,
       productPrice: Math.round((base * drift) / 10) * 10,
       productImage: `https://picsum.photos/seed/${id}/400/400`,
       productUrl: 'https://www.coupang.com/',
@@ -33,6 +34,6 @@ export function mockClient() {
   return {
     goldbox: async () => make('g', 20, 7, '골드박스'),
     best: async (categoryId, limit) => make('b', limit, categoryId),
-    search: async (keyword, limit) => make('s', limit, [...keyword].reduce((a, c) => a + c.charCodeAt(0), 0)),
+    search: async (keyword, limit) => make('s', limit, [...keyword].reduce((a, c) => a + c.charCodeAt(0), 0), '', keyword),
   };
 }

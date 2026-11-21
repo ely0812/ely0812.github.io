@@ -4,6 +4,7 @@ import path from 'node:path';
 import { priceDrops } from './deals.mjs';
 import { crumbHtml, guideDescription, jsonLdScript, lastChanged, pageGraph } from './seo.mjs';
 import { asOfKo, priceStats, sparkline } from './history.mjs';
+import { onTopicLists } from './guides.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const DIST = path.join(ROOT, 'dist');
@@ -11,6 +12,7 @@ const read = async (f) => JSON.parse(await fs.readFile(path.join(ROOT, f), 'utf8
 const config = await read('site.config.json');
 const products = await read('data/products.json');
 const state = await read('data/state.json');
+state.lists = onTopicLists(state.lists, products, config.guides);
 const base = (process.env.SITE_URL || config.baseUrl).replace(/\/$/, '');
 const updated = new Date(state.updatedAt);
 const kstDate = (d) => new Date(d.getTime() + 9 * 36e5).toISOString().slice(0, 10);
