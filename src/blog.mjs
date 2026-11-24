@@ -9,7 +9,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import { priceDrops } from './deals.mjs';
-import { brandsOf, guideTitle } from './titles.mjs';
+import { brandsOf, guideTitle, roundupTitle } from './titles.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const read = async (f) => JSON.parse(await fs.readFile(path.join(ROOT, f), 'utf8'));
@@ -149,7 +149,7 @@ function roundup() {
     key: `roundup:${today}`,
     facts: { asOf, products: top.map((d) => fact(d.product, d.before)) },
     ...wrap(
-      `${asOf} 기준 쿠팡 가격 하락 기록 TOP ${top.length} | ${secs.slice(0, 3).join('·') || '생활'}`,
+      roundupTitle({ names: top.map((d) => d.product.name), maxPercent: top[0].percent, month: mm, day: dd }),
       `${asOf} 기준 기록입니다. 매시간 가격을 기록하는 ${Object.keys(products).length.toLocaleString('ko-KR')}개 상품 중 전날보다 가격이 내려간 상품을 하락률 순으로 정리했어요(최대 ${top[0].percent}%). 할인은 이미 끝났을 수 있으니 링크에서 현재 가격을 꼭 확인하세요.`,
       top.map((d, i) => `<h2>${i + 1}위 · -${d.percent}%</h2>\n${blocks[i]}`),
       '이 글의 가격은 위 시각 기준이에요. 할인은 몇 시간 만에 끝나기도 하니, 실시간 하락 알림은 텔레그램 채널에서 받아 보세요.',
@@ -226,7 +226,9 @@ function guide() {
 // ---- pick today's posts ----
 const maxToday = args.max !== undefined ? Number(args.max) : blog.maxPerDay;
 const kinds = args.kinds ? args.kinds.split(',') : null;
-const slots = Math.max(0, maxToday - postedToday.length);
+// --max from the planner is already "room left today"; subtracting today's posts again
+// made the second post of a 2-per-day schedule never get generated.
+const slots = args.max !== undefined ? maxToday : Math.max(0, maxToday - postedToday.length);
 const picked = [];
 const done = new Set(postedToday.map((x) => x.kind));
 const makers = { roundup, flash, guide };

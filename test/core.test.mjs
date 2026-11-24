@@ -69,3 +69,13 @@ test('search results do not overwrite a goldbox/best price set in the same run',
   createUpsert(products, '2026-01-03')([item(1, 900)], { source: 'search' }); // next run, search only
   assert.deepEqual(products[1].history.map((h) => h.price), [1000, 1000, 900]);
 });
+
+test('roundup title leads with product names, not the date', async () => {
+  const { roundupTitle, shortName } = await import('../src/titles.mjs');
+  assert.equal(shortName('[로켓프레시] 삼립 56시간 저온숙성 탕종 찰식빵, 420g'), '삼립 저온숙성 탕종 찰식빵');
+  assert.equal(shortName('키친아트 에그찜기'), '키친아트 에그찜기');
+  assert.equal(
+    roundupTitle({ names: ['키친아트 에그찜기', '유닉스 세라믹 판고데기 UCI-A2500', 'x 1', 'y 2', 'z 3'], maxPercent: 40, month: 11, day: 24 }),
+    '키친아트 에그찜기·유닉스 세라믹 판고데기 등 5개 가격 내림 (최대 -40%) | 11월 24일 쿠팡 하락 기록',
+  );
+});

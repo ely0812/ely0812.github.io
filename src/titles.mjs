@@ -38,3 +38,20 @@ export function guideTitle({ subject, brands, prices, month, style }) {
       return `${subject} 고르기 전 가격 기록 확인 (${brands.length > 1 ? `${many(2)} 등 ${n}개` : one ? `${brands[0]} ${n}종` : `${n}개`})`;
   }
 }
+
+// Short searchable product name: first words after promo tokens, cut at a word boundary.
+export function shortName(name, max = 16) {
+  let out = '';
+  for (const w of name.split(/\s+/).map((x) => x.replace(/[,.]+$/, '')).filter((x) => x && !PROMO.test(x))) {
+    if (out && (out.length + 1 + w.length > max)) break;
+    out = out ? `${out} ${w}` : w;
+  }
+  return out || name.slice(0, max);
+}
+
+// Roundup titles lead with real product names: nobody searches for a date, and stats showed
+// the old "N시 기준 가격 하락 기록 TOP 5" titles got no search visits.
+export function roundupTitle({ names, maxPercent, month, day }) {
+  const lead = [...new Set(names.map((n) => shortName(n)))].slice(0, 2).join('·');
+  return `${lead} 등 ${names.length}개 가격 내림 (최대 -${maxPercent}%) | ${month}월 ${day}일 쿠팡 하락 기록`;
+}
