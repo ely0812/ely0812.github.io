@@ -2,7 +2,8 @@
 // merges them into data/products.json with a per-day price history.
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { createClient, optionId } from './coupang.mjs';
+import { createClient, normalize, optionId } from './coupang.mjs';
+import { onTopic } from './guides.mjs';
 import { createUpsert } from './merge.mjs';
 import { mockClient } from './mock.mjs';
 
@@ -95,8 +96,11 @@ if (state.searchPausedUntil && now < Date.parse(state.searchPausedUntil)) {
     const key = `guide:${guide.slug}`;
     state.searchLog.push(new Date().toISOString());
     try {
-      const found = await api.search(guide.keyword, n);
+      const results = await api.search(guide.keyword, n);
+      const found = results.filter((p) => onTopic(guide, normalize(p).name));
+      if (found.length < results.length) console.log(`🧹 "${guide.keyword}" 주제와 다른 상품 ${results.length - found.length}개 제외`);
       if (found.length) lists[key] = upsert(found, { source: 'search' }).slice(0, n);
+      else if (results.length) lists[key] = []; // all off-topic: clear the old list instead of keeping it
       else lists[key] ??= []; // searched, nothing found: don't keep jumping the queue
     } catch (e) {
       console.warn(`⚠ search "${guide.keyword}" 실패: ${e.message}`);
